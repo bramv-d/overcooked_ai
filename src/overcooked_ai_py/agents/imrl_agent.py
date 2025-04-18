@@ -56,11 +56,10 @@ class IMRLAgent(Agent):
         return action, {"action_probs": action_probs}
 
     def go_to_soup_action(self, state: OvercookedState) -> Tuple[Action, dict]:
-        start_pos_and_or = self.get_player(state).pos_and_or
+        current_pos_and_or = self.get_player(state).pos_and_or
         pot_states_dict = self.medium_level_action_manager.mdp.get_pot_states(state)
-
         next_to_pot = self.medium_level_action_manager.put_onion_in_pot_actions(pot_states_dict)
-        action_plan = self.motion_planner.get_plan(start_pos_and_or, next_to_pot[0])[0]
+        action_plan = self.motion_planner.get_plan(current_pos_and_or, next_to_pot[0])[0]
 
         action = action_plan[0]
         action_probs = Agent.a_probs_from_action(action)
@@ -93,4 +92,14 @@ if __name__ == "__main__":
     StateVisualizer().display_rendered_trajectory(results, img_directory_path=base_dir, ipython_display=False)
 
 # Next steps
-# Try to perform some steps after each other. So first go to the ingredients, pick it up, and then go to the pot.
+# 1. How to measure the change in state? How to measure the effect of an action?
+# 2. How to transfer the effect of the agent towards the competence?
+# 3. Progress is the difference between current and old competence
+# 4. Based on the progress model the interest in the action.
+# 5. How to make the agent learn based on its own actions and the changes it provokes?
+# 6. How to determine whether the agent should explore new actions or continue learning the current action?
+
+# Eventual idea
+# Feed the important state properties to the agent
+# Let it check with which action it can provoke the biggest change in the state
+# Perform the action with the biggest change and save this in some way
