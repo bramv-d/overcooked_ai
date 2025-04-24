@@ -1,73 +1,67 @@
-from collections import defaultdict
-from typing import Tuple, Any, Optional
+import json
+import os
+import random
+from typing import Dict, Tuple
 
-import numpy as np
-
-from overcooked_ai_py.agents.agent import Agent, AgentPair, GreedyHumanModel
+from overcooked_ai_py.agents.agent import Agent, AgentPair
 from overcooked_ai_py.agents.benchmarking import AgentEvaluator
 from overcooked_ai_py.data.layouts.layouts import layouts
-from overcooked_ai_py.mdp.layout_generator import CODE_TO_TYPE
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedState, OvercookedGridworld, PlayerState, ObjectState
-from overcooked_ai_py.planning.planners import MediumLevelActionManager, NO_COUNTERS_PARAMS, MotionPlanner
-from overcooked_ai_py.utils import manhattan_distance
+from overcooked_ai_py.mdp.actions import Action
+from overcooked_ai_py.mdp.layout_generator import TYPE_TO_CODE
+from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, PlayerState
+from overcooked_ai_py.planning.planners import MediumLevelActionManager, MotionPlanner, NO_COUNTERS_PARAMS
 from overcooked_ai_py.visualization.state_visualizer import StateVisualizer
-from overcooked_ai_py.mdp.actions import Direction, Action
-from testing.agent_test import force_compute
 
-class EnvironmentTypeRepresentation:
-    """
-    Class to represent the Environment type the agent is facing
-    """
 
-    def __init__(
-            self,
-            environment_type: CODE_TO_TYPE, # The type of the environment (e.g., 0 for empty, 1 for counter, etc.)
-            is_interactable: bool,  # Can agent interact?
-            can_receive_object: bool,  # Will it accept held object?
-            current_contents: Optional[str]  # e.g., "onion", "2_onions", "empty", "cooking"
-    ):
+class InteractionMemoryEntry:
+    def __init__(self, action, environment_type, agent_obj_before, env_obj_before,
+                 agent_obj_after, env_obj_after):
+        self.action = action
         self.environment_type = environment_type
-        self.is_interactable = is_interactable
-        self.can_receive_object = can_receive_object
-        self.current_contents = current_contents
+        self.agent_obj_before = agent_obj_before
+        self.env_obj_before = env_obj_before
+        self.agent_obj_after = agent_obj_after
+        self.env_obj_after = env_obj_after
+        self.counter = 1  # Start at 1 for the first observed instance
 
-    def to_key(self):
-        return self.environment_type, self.is_interactable, self.can_receive_object, self.current_contents
+    def increment(self):
+        self.counter += 1
+
+    def to_dict(self):
+        return {
+            "action": str(self.action),
+            "environment_type": self.environment_type,
+            "before_action": {
+                "agent_obj": self.agent_obj_before,
+                "env_obj": self.env_obj_before
+            },
+            "after_action": {
+                "agent_obj": self.agent_obj_after,
+                "env_obj": self.env_obj_after
+            },
+            "counter": self.counter
+        }
 
     def __eq__(self, other):
-        return self.to_key() == other.to_key()
-
-    def __hash__(self):
-        return hash(self.to_key())
-
-    def __repr__(self):
         return (
-            f"Target(type={self.environment_type}, interactable={self.is_interactable}, "
-            f"receives={self.can_receive_object}, contents={self.current_contents})"
+                self.action == other.action and
+                self.environment_type == other.environment_type and
+                self.agent_obj_before == other.agent_obj_before and
+                self.env_obj_before == other.env_obj_before and
+                self.agent_obj_after == other.agent_obj_after and
+                self.env_obj_after == other.env_obj_after
         )
 
-
-class ActionEnvironmentCoupling:
-    """
-    Class to represent the coupling between actions, agent_object_state and environment_object.
-    The certainty of the coupling can be calculated based on the number of times the action was performed and the result it had
-    """
-    def __init__(
-        self,
-        action: Action, #The performed action of the agent
-        agent_object_state: ObjectState, # The state of the object the agent is holding
-        environment_type_representation: EnvironmentTypeRepresentation, # The type of the environment and its properties
-    ):
-        self.action = action
-        self.agent_object_state = agent_object_state
-        self.environment_type_representation = environment_type_representation
-
-    def to_key(self):
-        return self.action, self.agent_object_state, self.environment_type_representation
-    def __eq__(self, other):
-        return self.to_key() == other.to_key()
     def __hash__(self):
-        return hash(self.to_key())
+        return hash((
+            self.action,
+            self.environment_type,
+            self.agent_obj_before,
+            self.env_obj_before,
+            self.agent_obj_after,
+            self.env_obj_after
+        ))
+
 
 class IMRLAgent(Agent):
     def __init__(self, layout, player_id, sim_threads=None):
@@ -77,9 +71,11 @@ class IMRLAgent(Agent):
         self.medium_level_action_manager = MediumLevelActionManager(self.mdp, NO_COUNTERS_PARAMS)
         self.sim_threads = sim_threads
         self.player_id = player_id
-
+        self.prev_state = None
+        self.prev_action = None
         # Memory: stores coupling → list of observed outcomes
-        self.memory = defaultdict(list)
+        self.memory: Dict[InteractionMemoryEntry, InteractionMemoryEntry] = {}
+        self.plan = None
 
     def get_player(self, state: OvercookedState) -> PlayerState:
         """
@@ -90,7 +86,72 @@ class IMRLAgent(Agent):
     def action(self, state: OvercookedState) -> Tuple[Action, dict]:
         possible_actions = self.mdp.get_actions(state)[self.player_id]
 
-        return Action.STAY, {}  # Placeholder for the action
+        # Randomly select one of the possible actions
+        action = random.choice(possible_actions)
+
+        if self.prev_action == Action.INTERACT:
+            entry = self.create_interaction_memory_entry(self.prev_action, self.prev_state, state)
+
+            if entry in self.memory:
+                self.memory[entry].increment()
+            else:
+                self.memory[entry] = entry
+
+        # Check if the action is already in the memory
+        self.prev_state = state
+        self.prev_action = action
+
+        return action, {}
+
+    def save_memory_to_json(self, base_dir: str, filename: str = "memory.json"):
+        os.makedirs(base_dir, exist_ok=True)
+        filepath = os.path.join(base_dir, filename)
+
+        # Convert each memory entry to a serializable dict
+        serializable_memory = [entry.to_dict() for entry in self.memory.values()]
+
+        # Save to JSON
+        with open(filepath, "w") as f:
+            json.dump(serializable_memory, f, indent=2)
+
+        print(f"Memory saved to {filepath}")
+
+    def create_interaction_memory_entry(
+            self,
+            prev_action: Action,
+            prev_state: OvercookedState,
+            current_state: OvercookedState
+    ) -> InteractionMemoryEntry:
+        """
+        Create a memory entry representing an interaction the agent took between two states.
+        """
+
+        # Get player states
+        prev_player = self.get_player(prev_state)
+        curr_player = self.get_player(current_state)
+
+        # Get the position the agent is facing
+        facing_cell = Action.move_in_direction(prev_player.pos_and_or[0], prev_player.pos_and_or[1])
+        terrain_type = self.mdp.get_terrain_type_at_pos(facing_cell)
+        environment_type_code = TYPE_TO_CODE[terrain_type]
+
+        # ---- Before interaction ----
+        env_obj_before = prev_state.get_object(facing_cell).name if prev_state.has_object(facing_cell) else None
+        agent_obj_before = prev_player.held_object.name if prev_player.held_object else None
+
+        # ---- After interaction ----
+        env_obj_after = current_state.get_object(facing_cell).name if current_state.has_object(facing_cell) else None
+        agent_obj_after = curr_player.held_object.name if curr_player.held_object else None
+
+        # ---- Create InteractionMemoryEntry ----
+        return InteractionMemoryEntry(
+            action=prev_action,
+            environment_type=environment_type_code,
+            agent_obj_before=agent_obj_before,
+            env_obj_before=env_obj_before,
+            agent_obj_after=agent_obj_after,
+            env_obj_after=env_obj_after
+        )
 
     def actions(self, states, agent_indices):
         return [self.action(state) for state in states]
@@ -101,7 +162,7 @@ def evaluate_agent_pair(agent_pair, layout):
     Evaluate a pair of agents on the given layout.
     """
     ae = AgentEvaluator.from_layout_name(mdp_params={"layout_name": layout, "old_dynamics": False},
-                                         env_params={"horizon": 20})  # Set horizon to 5
+                                         env_params={"horizon": 500})  # Set horizon to 5
     return ae.evaluate_agent_pair(agent_pair, 1)  # Run 5 games
 
 
@@ -117,6 +178,8 @@ if __name__ == "__main__":
     base_dir = "/Users/bram/Documents/Afstuderen/images/trajectories"
 
     StateVisualizer().display_rendered_trajectory(results, img_directory_path=base_dir, ipython_display=False)
+    agent1.save_memory_to_json(base_dir, filename="agent1_memory.json")
+    agent2.save_memory_to_json(base_dir, filename="agent2_memory.json")
 
 # Next steps
 # 1. How to measure the change in state? How to measure the effect of an action?
@@ -130,4 +193,3 @@ if __name__ == "__main__":
 # Feed the important state properties to the agent
 # Let it check with which action it can provoke the biggest change in the state
 # Perform the action with the biggest change and save this in some way
-
