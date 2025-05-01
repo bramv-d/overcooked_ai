@@ -7,7 +7,8 @@ from overcooked_ai_py.agents.agent import Agent, AgentPair
 from overcooked_ai_py.agents.benchmarking import AgentEvaluator
 from overcooked_ai_py.data.layouts.layouts import layouts
 from overcooked_ai_py.mdp.actions import Action
-from overcooked_ai_py.mdp.layout_generator import TYPE_TO_CODE
+from overcooked_ai_py.mdp.layout_generator import COUNTER, DISH_DISPENSER, ONION_DISPENSER, POT, SERVING_LOC, \
+    TOMATO_DISPENSER, TYPE_TO_CODE
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, PlayerState
 from overcooked_ai_py.planning.planners import MediumLevelActionManager, MotionPlanner, NO_COUNTERS_PARAMS
 from overcooked_ai_py.visualization.state_visualizer import StateVisualizer
@@ -83,7 +84,7 @@ class IMRLAgent(Agent):
         self.prev_action = None
         # Memory: stores coupling → list of observed outcomes
         self.memory: Dict[InteractionMemoryEntry, InteractionMemoryEntry] = {}
-        self.plan = None  # The plan that was already constructed in a previous decision. This improves performance significantly.
+        self.plan = None  # The plan that was already constructed in a previous decision.
         self.recent_positions = []
 
     def get_player(self, state: OvercookedState) -> PlayerState:
@@ -113,6 +114,7 @@ class IMRLAgent(Agent):
         action = self.get_curious_interact_action(
             state)  # If the agent coincidentally has an adjacent interesting tile, it will interact with it.
         if action is None:
+            plan = self.plan
             self.plan = self.get_action_plan_from_memory(state) if self.plan is None else self.plan
             action = self.plan[0] if self.plan else None
             self.plan = self.plan[1:] if self.plan else None
@@ -209,14 +211,43 @@ class IMRLAgent(Agent):
         # Find an environment type which it can interact with from the memory based on the item the agent is holding
         possible_features = []
         for entry in self.memory.values():
-            if entry.agent_obj_before == player.get_object().name:
+            if entry.agent_obj_before == player.held_object.name if player.held_object else None:
                 # Check whether there is an entry in the memory for the object the agent is holding and if so
-                if entry.agent_obj_before is not entry.agent_obj_before or entry.env_obj_before is not entry.env_obj_after:
+                if entry.agent_obj_before != entry.agent_obj_after or entry.env_obj_before != entry.env_obj_after:
                     # This action made a lot of impact on the environment since a lot changed
                     possible_features.append(entry)
 
-        # We should go towards the environment type where the biggest impact can be made
+        if not possible_features:
+            # No possible features found, return None
+            return None
 
+        # Get the feature with the lowest counter; this is the one that is most interesting
+        possible_features.sort(key=lambda x: x.counter)
+        pot_states_dict = self.medium_level_action_manager.mdp.get_pot_states(state)
+        best_feature = possible_features[0]
+        counter_pickup_objects = self.mdp.get_counter_objects_dict(state)
+        # Get the action plan for the best feature
+        if best_feature.environment_type is TYPE_TO_CODE[ONION_DISPENSER]:
+            return self.medium_level_action_manager.pickup_onion_actions(counter_pickup_objects)
+        elif best_feature.environment_type is TYPE_TO_CODE[TOMATO_DISPENSER]:
+            return self.medium_level_action_manager.pickup_tomato_actions(counter_pickup_objects)
+        elif best_feature.environment_type is TYPE_TO_CODE[POT]:
+            return self.medium_level_action_manager.put_onion_in_pot_actions(pot_states_dict)
+        elif best_feature.environment_type is TYPE_TO_CODE[COUNTER]:
+            return None
+        elif best_feature.environment_type is TYPE_TO_CODE[DISH_DISPENSER]:
+            return self.medium_level_action_manager.pickup_dish_actions(counter_pickup_objects)
+        elif best_feature.environment_type is TYPE_TO_CODE[SERVING_LOC]:
+            return self.medium_level_action_manager.deliver_soup_actions()
+        return None
+
+    # 0: EMPTY,
+    # 1: COUNTER,
+    # 2: ONION_DISPENSER,
+    # 3: TOMATO_DISPENSER,
+    # 4: POT,
+    # 5: DISH_DISPENSER,
+    # 6: SERVING_LOC,
     def save_memory_to_json(self, directory: str, filename: str = "memory.json"):
         os.makedirs(directory, exist_ok=True)
         filepath = os.path.join(directory, filename)
