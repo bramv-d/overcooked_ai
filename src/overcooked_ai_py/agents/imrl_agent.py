@@ -107,7 +107,9 @@ class IMRLAgent(Agent):
                 self.memory[entry] = entry
 
         self.recent_positions.append(player.position)
-        self.recent_positions.pop(0)
+        if len(self.recent_positions) > 5:
+            # Remove the oldest position if we have more than 5
+            self.recent_positions.pop(0)
         """
         SECOND, THE ACTION IS GENERATED EITHER BY AN ACTION PLAN OR BY A CURIOUS INTERACTION
         """
@@ -115,7 +117,10 @@ class IMRLAgent(Agent):
             state)  # If the agent coincidentally has an adjacent interesting tile, it will interact with it.
         if action is None:
             plan = self.plan
-            self.plan = self.get_action_plan_from_memory(state) if self.plan is None else self.plan
+            if plan is None:
+                # If there is no plan, create a new one
+                plan = self.get_action_plan_from_memory(state)
+                self.plan = plan
             action = self.plan[0] if self.plan else None
             self.plan = self.plan[1:] if self.plan else None
 
