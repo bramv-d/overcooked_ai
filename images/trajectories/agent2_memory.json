@@ -10,7 +10,7 @@
       "agent_obj": null,
       "env_obj": null
     },
-    "counter": 18
+    "counter": 1
   },
   {
     "action": "interact",
@@ -23,33 +23,7 @@
       "agent_obj": null,
       "env_obj": null
     },
-    "counter": 34
-  },
-  {
-    "action": "interact",
-    "environment_type": 1,
-    "before_action": {
-      "agent_obj": null,
-      "env_obj": "onion"
-    },
-    "after_action": {
-      "agent_obj": "onion",
-      "env_obj": null
-    },
-    "counter": 2
-  },
-  {
-    "action": "interact",
-    "environment_type": 1,
-    "before_action": {
-      "agent_obj": "onion",
-      "env_obj": null
-    },
-    "after_action": {
-      "agent_obj": null,
-      "env_obj": "onion"
-    },
-    "counter": 3
+    "counter": 1
   },
   {
     "action": "interact",
@@ -66,87 +40,9 @@
   },
   {
     "action": "interact",
-    "environment_type": 5,
-    "before_action": {
-      "agent_obj": null,
-      "env_obj": null
-    },
-    "after_action": {
-      "agent_obj": "dish",
-      "env_obj": null
-    },
-    "counter": 1
-  },
-  {
-    "action": "interact",
-    "environment_type": 5,
-    "before_action": {
-      "agent_obj": "dish",
-      "env_obj": null
-    },
-    "after_action": {
-      "agent_obj": "dish",
-      "env_obj": null
-    },
-    "counter": 1
-  },
-  {
-    "action": "interact",
-    "environment_type": 0,
-    "before_action": {
-      "agent_obj": "dish",
-      "env_obj": null
-    },
-    "after_action": {
-      "agent_obj": "dish",
-      "env_obj": null
-    },
-    "counter": 3
-  },
-  {
-    "action": "interact",
-    "environment_type": 1,
-    "before_action": {
-      "agent_obj": "dish",
-      "env_obj": null
-    },
-    "after_action": {
-      "agent_obj": null,
-      "env_obj": "dish"
-    },
-    "counter": 2
-  },
-  {
-    "action": "interact",
-    "environment_type": 1,
-    "before_action": {
-      "agent_obj": null,
-      "env_obj": "dish"
-    },
-    "after_action": {
-      "agent_obj": "dish",
-      "env_obj": null
-    },
-    "counter": 1
-  },
-  {
-    "action": "interact",
     "environment_type": 2,
     "before_action": {
       "agent_obj": null,
-      "env_obj": null
-    },
-    "after_action": {
-      "agent_obj": "onion",
-      "env_obj": null
-    },
-    "counter": 1
-  },
-  {
-    "action": "interact",
-    "environment_type": 2,
-    "before_action": {
-      "agent_obj": "onion",
       "env_obj": null
     },
     "after_action": {
@@ -166,6 +62,58 @@
       "agent_obj": "onion",
       "env_obj": null
     },
-    "counter": 7
+    "counter": 1
+  },
+  {
+    "action": "interact",
+    "environment_type": 1,
+    "before_action": {
+      "agent_obj": "onion",
+      "env_obj": null
+    },
+    "after_action": {
+      "agent_obj": null,
+      "env_obj": "onion"
+    },
+    "counter": 1
+  },
+  {
+    "action": "interact",
+    "environment_type": 1,
+    "before_action": {
+      "agent_obj": null,
+      "env_obj": "onion"
+    },
+    "after_action": {
+      "agent_obj": "onion",
+      "env_obj": null
+    },
+    "counter": 1
+  },
+  {
+    "action": "interact",
+    "environment_type": 4,
+    "before_action": {
+      "agent_obj": "onion",
+      "env_obj": null
+    },
+    "after_action": {
+      "agent_obj": null,
+      "env_obj": "soup"
+    },
+    "counter": 1
+  },
+  {
+    "action": "interact",
+    "environment_type": 4,
+    "before_action": {
+      "agent_obj": null,
+      "env_obj": "soup"
+    },
+    "after_action": {
+      "agent_obj": null,
+      "env_obj": "soup"
+    },
+    "counter": 1
   }
 ]

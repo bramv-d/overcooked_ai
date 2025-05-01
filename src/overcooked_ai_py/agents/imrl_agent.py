@@ -1,7 +1,7 @@
 import json
 import os
 import random
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple
 
 from overcooked_ai_py.agents.agent import Agent, AgentPair
 from overcooked_ai_py.agents.benchmarking import AgentEvaluator
@@ -42,6 +42,14 @@ class InteractionMemoryEntry:
             "counter": self.counter
         }
 
+    def matches_pre_action(self, other) -> bool:
+        return (
+                self.action == other.action and
+                self.environment_type == other.environment_type and
+                self.agent_obj_before == other.agent_obj_before and
+                self.env_obj_before == other.env_obj_before
+        )
+
     def __eq__(self, other):
         return (
                 self.action == other.action and
@@ -75,7 +83,8 @@ class IMRLAgent(Agent):
         self.prev_action = None
         # Memory: stores coupling → list of observed outcomes
         self.memory: Dict[InteractionMemoryEntry, InteractionMemoryEntry] = {}
-        self.plan = None
+        self.plan = None  # The plan that was already constructed in a previous decision. This improves performance significantly.
+        self.recent_positions = []
 
     def get_player(self, state: OvercookedState) -> PlayerState:
         """
@@ -84,11 +93,10 @@ class IMRLAgent(Agent):
         return state.players[self.player_id]
 
     def action(self, state: OvercookedState) -> Tuple[Action, dict]:
-        possible_actions = self.mdp.get_actions(state)[self.player_id]
-
-        # Randomly select one of the possible actions
-        action = random.choice(possible_actions)
-
+        """
+        FIRST, THE PREVIOUS STATE ACTION IS PROCESSED INTO MEMORY
+        """
+        player = self.get_player(state)
         if self.prev_action == Action.INTERACT:
             entry = self.create_interaction_memory_entry(self.prev_action, self.prev_state, state)
 
@@ -97,15 +105,121 @@ class IMRLAgent(Agent):
             else:
                 self.memory[entry] = entry
 
+        self.recent_positions.append(player.position)
+        self.recent_positions.pop(0)
+        """
+        SECOND, THE ACTION IS GENERATED EITHER BY AN ACTION PLAN OR BY A CURIOUS INTERACTION
+        """
+        action = self.get_curious_interact_action(
+            state)  # If the agent coincidentally has an adjacent interesting tile, it will interact with it.
+        if action is None:
+            self.plan = self.get_action_plan_from_memory(state) if self.plan is None else self.plan
+            action = self.plan[0] if self.plan else None
+            self.plan = self.plan[1:] if self.plan else None
+
+        if action is None:
+            action = self.get_non_recent_action(state)
+
+        action = self.get_action_if_stuck(state, action)
+
+        if action is None or action not in Action.ALL_ACTIONS:
+            print(f"[Warning] Agent {self.player_id} chose invalid action '{action}', defaulting to Action.STAY.")
+            action = Action.STAY
+
+        """
+        THEN THE ACTION IS GENERATED
+        """
         # Check if the action is already in the memory
         self.prev_state = state
         self.prev_action = action
-
+        assert action in Action.ALL_ACTIONS
         return action, {}
 
-    def save_memory_to_json(self, base_dir: str, filename: str = "memory.json"):
-        os.makedirs(base_dir, exist_ok=True)
-        filepath = os.path.join(base_dir, filename)
+    def get_non_recent_action(self, state) -> Action | None:
+        """
+        Get a non-recent action from the memory.
+        """
+        player = self.get_player(state)
+        # Get the last 5 positions of the player
+        adjacent_features = self.mdp.get_adjacent_features(player)
+
+        for pos, _ in adjacent_features:
+            if pos in self.mdp.get_valid_player_positions():
+                if pos not in self.recent_positions:
+                    return Action.determine_action_for_change_in_pos(player.position, pos)
+
+        return None
+
+    def get_action_if_stuck(self, state: OvercookedState, action) -> Action | None:
+        # Check for being stuck
+        player = self.get_player(state)
+        if self.prev_state:
+            prev_player = self.get_player(self.prev_state)
+            curr_player = player
+            stuck = (
+                    prev_player.position == curr_player.position and
+                    self.prev_action == action
+            )
+
+            if stuck:
+                # Try a different random direction (except stay)
+                alternative_actions = [a for a in Action.ALL_ACTIONS if a != self.prev_action and a != Action.STAY]
+                return random.choice(alternative_actions)
+
+        return action
+
+    def get_curious_interact_action(self, state: OvercookedState) -> str | None | Any:
+        """
+        Scan adjacent tiles to identify unexplored interactions. If found, return the action to interact with it or move towards it.
+        """
+        player = self.get_player(state)
+        adjacent_features = self.mdp.get_adjacent_features(player)
+        action = None
+        for pos, terrain_char in adjacent_features:
+            environment_type_code = TYPE_TO_CODE[terrain_char]
+            agent_obj_before = player.held_object.name if player.held_object else None
+            env_obj_before = state.get_object(pos).name if state.has_object(pos) else None
+
+            hypothetical_entry = InteractionMemoryEntry(
+                action=Action.INTERACT,
+                environment_type=environment_type_code,
+                agent_obj_before=agent_obj_before,
+                env_obj_before=env_obj_before,
+                agent_obj_after=None,  # unknown
+                env_obj_after=None  # unknown
+            )
+
+            if not any(mem_entry.matches_pre_action(hypothetical_entry) for mem_entry in self.memory.values()):
+                # In this case, we have a novel interaction
+                # 1 - check whether it is facing the interesting tile
+                new_pos = Action.move_in_direction(player.pos_and_or[0], player.pos_and_or[1])
+                if new_pos == pos:
+                    # 2 - interact with the tile
+                    return Action.INTERACT
+                # 3 - if it is not facing the interesting tile, move towards it
+                action = Action.determine_action_for_change_in_pos(player.position, pos)
+
+        return action  # No novel interaction found
+
+    def get_action_plan_from_memory(self, state: OvercookedState):
+        """
+        Get the action plan for the agent from its memory based on which environment type it can interact with.
+        """
+        player = self.get_player(state)
+        # Find an environment type which it can interact with from the memory based on the item the agent is holding
+        possible_features = []
+        for entry in self.memory.values():
+            if entry.agent_obj_before == player.get_object().name:
+                # Check whether there is an entry in the memory for the object the agent is holding and if so
+                if entry.agent_obj_before is not entry.agent_obj_before or entry.env_obj_before is not entry.env_obj_after:
+                    # This action made a lot of impact on the environment since a lot changed
+                    possible_features.append(entry)
+
+        # We should go towards the environment type where the biggest impact can be made
+
+    def save_memory_to_json(self, directory: str, filename: str = "memory.json"):
+        os.makedirs(directory, exist_ok=True)
+        filepath = os.path.join(directory, filename)
 
         # Convert each memory entry to a serializable dict
         serializable_memory = [entry.to_dict() for entry in self.memory.values()]
@@ -158,9 +272,6 @@ class IMRLAgent(Agent):
 
 
 def evaluate_agent_pair(agent_pair, layout):
-    """
-    Evaluate a pair of agents on the given layout.
-    """
     ae = AgentEvaluator.from_layout_name(mdp_params={"layout_name": layout, "old_dynamics": False},
                                          env_params={"horizon": 500})  # Set horizon to 5
     return ae.evaluate_agent_pair(agent_pair, 1)  # Run 5 games
@@ -181,15 +292,14 @@ if __name__ == "__main__":
     agent1.save_memory_to_json(base_dir, filename="agent1_memory.json")
     agent2.save_memory_to_json(base_dir, filename="agent2_memory.json")
 
-# Next steps
-# 1. How to measure the change in state? How to measure the effect of an action?
-# 2. How to transfer the effect of the agent towards the competence?
-# 3. Progress is the difference between current and old competence
-# 4. Based on the progress model, the interest in the action.
-# 5. How to make the agent learn based on its own actions and the changes it provokes?
-# 6. How to determine whether the agent should explore new actions or continue learning the current action?
+# NEXT STEPS:
+# 1. Use the memory of the agent to make well-grounded decisions, first for high level actions.
 
-# Eventual idea
-# Feed the important state properties to the agent
-# Let it check with which action it can provoke the biggest change in the state
-# Perform the action with the biggest change and save this in some way
+"""
+ QUESTIONS:
+ 1. How to make the agent choose the lower level actions 
+    For now just implement the higher level actions and we will see how to go from there.
+2. How to create the starting memory of the agent? At the start of the game, the agent has no memory. How to choose the action at the start of the game?
+    It somehow has to choose certain actions to create the memory but should the be pure random?
+    
+"""

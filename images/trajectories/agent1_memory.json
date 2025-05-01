@@ -10,7 +10,7 @@
       "agent_obj": null,
       "env_obj": null
     },
-    "counter": 23
+    "counter": 1
   },
   {
     "action": "interact",
@@ -23,84 +23,110 @@
       "agent_obj": null,
       "env_obj": null
     },
-    "counter": 14
+    "counter": 1
   },
   {
     "action": "interact",
-    "environment_type": 2,
+    "environment_type": 5,
     "before_action": {
       "agent_obj": null,
       "env_obj": null
     },
     "after_action": {
-      "agent_obj": "onion",
+      "agent_obj": "dish",
       "env_obj": null
     },
-    "counter": 4
+    "counter": 1
+  },
+  {
+    "action": "interact",
+    "environment_type": 5,
+    "before_action": {
+      "agent_obj": "dish",
+      "env_obj": null
+    },
+    "after_action": {
+      "agent_obj": "dish",
+      "env_obj": null
+    },
+    "counter": 1
+  },
+  {
+    "action": "interact",
+    "environment_type": 1,
+    "before_action": {
+      "agent_obj": "dish",
+      "env_obj": null
+    },
+    "after_action": {
+      "agent_obj": null,
+      "env_obj": "dish"
+    },
+    "counter": 1
+  },
+  {
+    "action": "interact",
+    "environment_type": 1,
+    "before_action": {
+      "agent_obj": null,
+      "env_obj": "dish"
+    },
+    "after_action": {
+      "agent_obj": "dish",
+      "env_obj": null
+    },
+    "counter": 1
   },
   {
     "action": "interact",
     "environment_type": 0,
     "before_action": {
-      "agent_obj": "onion",
+      "agent_obj": "dish",
       "env_obj": null
     },
     "after_action": {
-      "agent_obj": "onion",
+      "agent_obj": "dish",
       "env_obj": null
     },
-    "counter": 30
+    "counter": 1
   },
   {
     "action": "interact",
-    "environment_type": 1,
+    "environment_type": 4,
     "before_action": {
-      "agent_obj": "onion",
+      "agent_obj": "dish",
       "env_obj": null
     },
     "after_action": {
-      "agent_obj": null,
-      "env_obj": "onion"
-    },
-    "counter": 8
-  },
-  {
-    "action": "interact",
-    "environment_type": 1,
-    "before_action": {
-      "agent_obj": null,
-      "env_obj": "onion"
-    },
-    "after_action": {
-      "agent_obj": "onion",
+      "agent_obj": "dish",
       "env_obj": null
     },
-    "counter": 4
+    "counter": 1
   },
   {
     "action": "interact",
     "environment_type": 2,
     "before_action": {
-      "agent_obj": "onion",
+      "agent_obj": "dish",
       "env_obj": null
     },
     "after_action": {
-      "agent_obj": "onion",
+      "agent_obj": "dish",
       "env_obj": null
     },
-    "counter": 3
+    "counter": 1
   },
   {
     "action": "interact",
-    "environment_type": 1,
+    "environment_type": 6,
     "before_action": {
-      "agent_obj": "onion",
-      "env_obj": "onion"
+      "agent_obj": "dish",
+      "env_obj": null
     },
     "after_action": {
-      "agent_obj": "onion",
-      "env_obj": "onion"
+      "agent_obj": "dish",
+      "env_obj": null
     },
-    "counter": 3
+    "counter": 1
   }
 ]
