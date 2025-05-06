@@ -72,6 +72,17 @@ class InteractionMemoryEntry:
         ))
 
 
+def get_shortest_path_to_counter(player_pos_and_or, all_counters, motion_planner: MotionPlanner):
+    """
+    Get the shortest path to a counter from the player's position.
+    """
+    closest_counter = None
+    closest_counter_distance = None
+    path = motion_planner.min_cost_to_feature(player_pos_and_or, all_counters)
+
+    # TODO calculate the path to the closest counter
+    return closest_counter
+
 class IMRLAgent(Agent):
     def __init__(self, layout, player_id, sim_threads=None):
         super().__init__()
@@ -107,7 +118,7 @@ class IMRLAgent(Agent):
                 self.memory[entry] = entry
 
         self.recent_positions.append(player.position)
-        if len(self.recent_positions) > 5:
+        if len(self.recent_positions) > 7:
             # Remove the oldest position if we have more than 5
             self.recent_positions.pop(0)
         """
@@ -144,18 +155,26 @@ class IMRLAgent(Agent):
 
     def get_non_recent_action(self, state) -> Action | None:
         """
-        Get a non-recent action from the memory.
+        Get a random valid action for the player.
         """
         player = self.get_player(state)
-        # Get the last 5 positions of the player
         adjacent_features = self.mdp.get_adjacent_features(player)
 
-        for pos, _ in adjacent_features:
-            if pos in self.mdp.get_valid_player_positions():
-                if pos not in self.recent_positions:
-                    return Action.determine_action_for_change_in_pos(player.position, pos)
+        # Filter only valid positions
+        valid_positions = [
+            pos for pos, _ in adjacent_features
+            if pos in self.mdp.get_valid_player_positions()
+        ]
 
-        return None
+        # Optional: exclude recently visited positions
+        valid_positions = [pos for pos in valid_positions if pos not in self.recent_positions]
+
+        if valid_positions:
+            chosen_pos = random.choice(valid_positions)
+            return Action.determine_action_for_change_in_pos(player.position, chosen_pos)
+        else:
+            # Fallback
+            return Action.STAY  # As last resort
 
     def get_action_if_stuck(self, state: OvercookedState, action) -> Action | None:
         # Check for being stuck
@@ -239,7 +258,8 @@ class IMRLAgent(Agent):
         elif best_feature.environment_type is TYPE_TO_CODE[POT]:
             return self.medium_level_action_manager.put_onion_in_pot_actions(pot_states_dict)
         elif best_feature.environment_type is TYPE_TO_CODE[COUNTER]:
-            return None
+            return get_shortest_path_to_counter(player.pos_and_or, self.mdp.get_counter_locations(),
+                                                self.motion_planner)
         elif best_feature.environment_type is TYPE_TO_CODE[DISH_DISPENSER]:
             return self.medium_level_action_manager.pickup_dish_actions(counter_pickup_objects)
         elif best_feature.environment_type is TYPE_TO_CODE[SERVING_LOC]:
@@ -328,14 +348,3 @@ if __name__ == "__main__":
     agent1.save_memory_to_json(base_dir, filename="agent1_memory.json")
     agent2.save_memory_to_json(base_dir, filename="agent2_memory.json")
 
-# NEXT STEPS:
-# 1. Use the memory of the agent to make well-grounded decisions, first for high level actions.
-
-"""
- QUESTIONS:
- 1. How to make the agent choose the lower level actions 
-    For now just implement the higher level actions and we will see how to go from there.
-2. How to create the starting memory of the agent? At the start of the game, the agent has no memory. How to choose the action at the start of the game?
-    It somehow has to choose certain actions to create the memory but should the be pure random?
-    
-"""
