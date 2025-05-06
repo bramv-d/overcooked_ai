@@ -71,6 +71,7 @@ class InteractionMemoryEntry:
             self.env_obj_after
         ))
 
+
 class IMRLAgent(Agent):
     def __init__(self, layout, player_id, sim_threads=None):
         super().__init__()
@@ -359,3 +360,10 @@ if __name__ == "__main__":
     StateVisualizer().display_rendered_trajectory(results, img_directory_path=base_dir, ipython_display=False)
     agent1.save_memory_to_json(base_dir, filename="agent1_memory.json")
     agent2.save_memory_to_json(base_dir, filename="agent2_memory.json")
+
+# TODO
+# - Include the pot state in the memory
+# - If the agent explores a new object it should explore interacting with all known environment types with that object
+# -  - If the agent gets an interaction with the newly discovered object, it should 'know' how to gain the object again to interact with the new object
+# - If the agent explores a new environment type it should explore interacting with all known objects with that environment type
+# -  - If the agent gets an interaction with the newly discovered environment type, it should 'know' how to gain the object again to interact with the new environment type
