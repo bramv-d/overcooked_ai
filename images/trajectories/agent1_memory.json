@@ -23,7 +23,7 @@
       "agent_obj": null,
       "env_obj": null
     },
-    "counter": 1
+    "counter": 11
   },
   {
     "action": "interact",
@@ -31,32 +31,6 @@
     "before_action": {
       "agent_obj": null,
       "env_obj": null
-    },
-    "after_action": {
-      "agent_obj": "dish",
-      "env_obj": null
-    },
-    "counter": 1
-  },
-  {
-    "action": "interact",
-    "environment_type": 1,
-    "before_action": {
-      "agent_obj": "dish",
-      "env_obj": null
-    },
-    "after_action": {
-      "agent_obj": null,
-      "env_obj": "dish"
-    },
-    "counter": 2
-  },
-  {
-    "action": "interact",
-    "environment_type": 1,
-    "before_action": {
-      "agent_obj": null,
-      "env_obj": "dish"
     },
     "after_action": {
       "agent_obj": "dish",
@@ -75,27 +49,40 @@
       "agent_obj": "dish",
       "env_obj": null
     },
-    "counter": 5
+    "counter": 1
   },
   {
     "action": "interact",
     "environment_type": 1,
     "before_action": {
       "agent_obj": "dish",
-      "env_obj": "onion"
+      "env_obj": null
     },
     "after_action": {
-      "agent_obj": "dish",
-      "env_obj": "onion"
+      "agent_obj": null,
+      "env_obj": "dish"
     },
     "counter": 1
   },
   {
     "action": "interact",
-    "environment_type": 2,
+    "environment_type": 6,
     "before_action": {
-      "agent_obj": "dish",
+      "agent_obj": null,
       "env_obj": null
+    },
+    "after_action": {
+      "agent_obj": null,
+      "env_obj": null
+    },
+    "counter": 12
+  },
+  {
+    "action": "interact",
+    "environment_type": 1,
+    "before_action": {
+      "agent_obj": null,
+      "env_obj": "dish"
     },
     "after_action": {
       "agent_obj": "dish",
@@ -105,7 +92,7 @@
   },
   {
     "action": "interact",
-    "environment_type": 4,
+    "environment_type": 5,
     "before_action": {
       "agent_obj": "dish",
       "env_obj": null
@@ -131,52 +118,65 @@
   },
   {
     "action": "interact",
+    "environment_type": 1,
+    "before_action": {
+      "agent_obj": "dish",
+      "env_obj": "onion"
+    },
+    "after_action": {
+      "agent_obj": "dish",
+      "env_obj": "onion"
+    },
+    "counter": 1
+  },
+  {
+    "action": "interact",
+    "environment_type": 2,
+    "before_action": {
+      "agent_obj": "dish",
+      "env_obj": null
+    },
+    "after_action": {
+      "agent_obj": "dish",
+      "env_obj": null
+    },
+    "counter": 1
+  },
+  {
+    "action": "interact",
+    "environment_type": 4,
+    "before_action": {
+      "agent_obj": "dish",
+      "env_obj": null
+    },
+    "after_action": {
+      "agent_obj": "dish",
+      "env_obj": null
+    },
+    "counter": 1
+  },
+  {
+    "action": "interact",
     "environment_type": 4,
     "before_action": {
       "agent_obj": "dish",
       "env_obj": "soup"
     },
     "after_action": {
-      "agent_obj": "dish",
-      "env_obj": "soup"
-    },
-    "counter": 1
-  },
-  {
-    "action": "interact",
-    "environment_type": 5,
-    "before_action": {
-      "agent_obj": "dish",
-      "env_obj": null
-    },
-    "after_action": {
-      "agent_obj": "dish",
+      "agent_obj": "soup",
       "env_obj": null
     },
     "counter": 1
   },
   {
     "action": "interact",
-    "environment_type": 2,
+    "environment_type": 4,
     "before_action": {
-      "agent_obj": null,
+      "agent_obj": "soup",
       "env_obj": null
     },
     "after_action": {
-      "agent_obj": "onion",
-      "env_obj": null
-    },
-    "counter": 1
-  },
-  {
-    "action": "interact",
-    "environment_type": 2,
-    "before_action": {
-      "agent_obj": "onion",
-      "env_obj": null
-    },
-    "after_action": {
-      "agent_obj": "onion",
+      "agent_obj": "soup",
       "env_obj": null
     },
     "counter": 1
@@ -185,64 +185,77 @@
     "action": "interact",
     "environment_type": 0,
     "before_action": {
-      "agent_obj": "onion",
+      "agent_obj": "soup",
       "env_obj": null
     },
     "after_action": {
-      "agent_obj": "onion",
+      "agent_obj": "soup",
       "env_obj": null
     },
-    "counter": 1
+    "counter": 2
   },
   {
     "action": "interact",
     "environment_type": 1,
     "before_action": {
-      "agent_obj": "onion",
-      "env_obj": null
-    },
-    "after_action": {
-      "agent_obj": null,
-      "env_obj": "onion"
-    },
-    "counter": 1
-  },
-  {
-    "action": "interact",
-    "environment_type": 4,
-    "before_action": {
-      "agent_obj": null,
-      "env_obj": null
-    },
-    "after_action": {
-      "agent_obj": null,
-      "env_obj": null
-    },
-    "counter": 1
-  },
-  {
-    "action": "interact",
-    "environment_type": 1,
-    "before_action": {
-      "agent_obj": null,
-      "env_obj": "onion"
-    },
-    "after_action": {
-      "agent_obj": "onion",
-      "env_obj": null
-    },
-    "counter": 1
-  },
-  {
-    "action": "interact",
-    "environment_type": 4,
-    "before_action": {
-      "agent_obj": "onion",
+      "agent_obj": "soup",
       "env_obj": null
     },
     "after_action": {
       "agent_obj": null,
       "env_obj": "soup"
+    },
+    "counter": 1
+  },
+  {
+    "action": "interact",
+    "environment_type": 1,
+    "before_action": {
+      "agent_obj": null,
+      "env_obj": "soup"
+    },
+    "after_action": {
+      "agent_obj": "soup",
+      "env_obj": null
+    },
+    "counter": 1
+  },
+  {
+    "action": "interact",
+    "environment_type": 5,
+    "before_action": {
+      "agent_obj": "soup",
+      "env_obj": null
+    },
+    "after_action": {
+      "agent_obj": "soup",
+      "env_obj": null
+    },
+    "counter": 1
+  },
+  {
+    "action": "interact",
+    "environment_type": 2,
+    "before_action": {
+      "agent_obj": "soup",
+      "env_obj": null
+    },
+    "after_action": {
+      "agent_obj": "soup",
+      "env_obj": null
+    },
+    "counter": 2
+  },
+  {
+    "action": "interact",
+    "environment_type": 6,
+    "before_action": {
+      "agent_obj": "soup",
+      "env_obj": null
+    },
+    "after_action": {
+      "agent_obj": null,
+      "env_obj": null
     },
     "counter": 1
   }

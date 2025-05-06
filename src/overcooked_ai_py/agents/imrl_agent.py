@@ -10,7 +10,7 @@ from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.layout_generator import COUNTER, DISH_DISPENSER, ONION_DISPENSER, POT, SERVING_LOC, \
     TOMATO_DISPENSER, TYPE_TO_CODE
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, PlayerState
-from overcooked_ai_py.planning.planners import MediumLevelActionManager, MotionPlanner, NO_COUNTERS_PARAMS
+from overcooked_ai_py.planning.planners import MediumLevelActionManager, MotionPlanner
 from overcooked_ai_py.visualization.state_visualizer import StateVisualizer
 
 
@@ -71,24 +71,21 @@ class InteractionMemoryEntry:
             self.env_obj_after
         ))
 
-
-def get_shortest_path_to_counter(player_pos_and_or, all_counters, motion_planner: MotionPlanner):
-    """
-    Get the shortest path to a counter from the player's position.
-    """
-    closest_counter = None
-    closest_counter_distance = None
-    path = motion_planner.min_cost_to_feature(player_pos_and_or, all_counters)
-
-    # TODO calculate the path to the closest counter
-    return closest_counter
-
 class IMRLAgent(Agent):
     def __init__(self, layout, player_id, sim_threads=None):
         super().__init__()
         self.mdp: OvercookedGridworld = OvercookedGridworld.from_layout_name(layout)
         self.motion_planner = MotionPlanner(self.mdp)
-        self.medium_level_action_manager = MediumLevelActionManager(self.mdp, NO_COUNTERS_PARAMS)
+        base_params_start_or = {
+            "start_orientations": False,
+            "wait_allowed": False,
+            "counter_goals": [],
+            "counter_drop": [],
+            "counter_pickup": [],
+            "same_motion_goals": False,
+        }
+        print(base_params_start_or)
+        self.medium_level_action_manager = MediumLevelActionManager(self.mdp, base_params_start_or)
         self.sim_threads = sim_threads
         self.player_id = player_id
         self.prev_state = None
@@ -119,21 +116,34 @@ class IMRLAgent(Agent):
 
         self.recent_positions.append(player.position)
         if len(self.recent_positions) > 7:
-            # Remove the oldest position if we have more than 5
+            # Remove the oldest position if we have more than 7
             self.recent_positions.pop(0)
         """
         SECOND, THE ACTION IS GENERATED EITHER BY AN ACTION PLAN OR BY A CURIOUS INTERACTION
         """
         action = self.get_curious_interact_action(
             state)  # If the agent coincidentally has an adjacent interesting tile, it will interact with it.
+        if action:
+            print(f"[INFO] Agent {self.player_id} executed curious action: {action}")
+
         if action is None:
             plan = self.plan
             if plan is None:
                 # If there is no plan, create a new one
                 plan = self.get_action_plan_from_memory(state)
-                self.plan = plan
-            action = self.plan[0] if self.plan else None
-            self.plan = self.plan[1:] if self.plan else None
+                print(f"[INFO] Agent {self.player_id} created a new plan: {plan}")
+                self.plan = None if plan == [] else plan
+            if plan is not None:
+                # If there is a plan
+                print(plan)
+                action = plan[0][1]
+                # Remove the first action from the plan
+                self.plan = plan[1:]
+                # If the plan is empty, set it to None
+                if not self.plan:
+                    self.plan = None
+
+                print(f"[INFO] Agent {self.player_id} executed action from plan: {action}")
 
         if action is None:
             action = self.get_non_recent_action(state)
@@ -235,11 +245,14 @@ class IMRLAgent(Agent):
         # Find an environment type which it can interact with from the memory based on the item the agent is holding
         possible_features = []
         for entry in self.memory.values():
-            if entry.agent_obj_before == player.held_object.name if player.held_object else None:
+            object_name = player.held_object.name if player.held_object else None
+            entry_object = entry.agent_obj_before
+            if entry_object == object_name:
                 # Check whether there is an entry in the memory for the object the agent is holding and if so
                 if entry.agent_obj_before != entry.agent_obj_after or entry.env_obj_before != entry.env_obj_after:
                     # This action made a lot of impact on the environment since a lot changed
-                    possible_features.append(entry)
+                    if entry.environment_type is not TYPE_TO_CODE[COUNTER]:
+                        possible_features.append(entry)
 
         if not possible_features:
             # No possible features found, return None
@@ -251,15 +264,14 @@ class IMRLAgent(Agent):
         best_feature = possible_features[0]
         counter_pickup_objects = self.mdp.get_counter_objects_dict(state)
         # Get the action plan for the best feature
+        print(best_feature.environment_type)
+        print(TYPE_TO_CODE[POT])
         if best_feature.environment_type is TYPE_TO_CODE[ONION_DISPENSER]:
             return self.medium_level_action_manager.pickup_onion_actions(counter_pickup_objects)
         elif best_feature.environment_type is TYPE_TO_CODE[TOMATO_DISPENSER]:
             return self.medium_level_action_manager.pickup_tomato_actions(counter_pickup_objects)
         elif best_feature.environment_type is TYPE_TO_CODE[POT]:
             return self.medium_level_action_manager.put_onion_in_pot_actions(pot_states_dict)
-        elif best_feature.environment_type is TYPE_TO_CODE[COUNTER]:
-            return get_shortest_path_to_counter(player.pos_and_or, self.mdp.get_counter_locations(),
-                                                self.motion_planner)
         elif best_feature.environment_type is TYPE_TO_CODE[DISH_DISPENSER]:
             return self.medium_level_action_manager.pickup_dish_actions(counter_pickup_objects)
         elif best_feature.environment_type is TYPE_TO_CODE[SERVING_LOC]:
@@ -347,4 +359,3 @@ if __name__ == "__main__":
     StateVisualizer().display_rendered_trajectory(results, img_directory_path=base_dir, ipython_display=False)
     agent1.save_memory_to_json(base_dir, filename="agent1_memory.json")
     agent2.save_memory_to_json(base_dir, filename="agent2_memory.json")
-
