@@ -124,27 +124,20 @@ class IMRLAgent(Agent):
         """
         action = self.get_curious_interact_action(
             state)  # If the agent coincidentally has an adjacent interesting tile, it will interact with it.
-        if action:
-            print(f"[INFO] Agent {self.player_id} executed curious action: {action}")
 
-        if action is None:
-            plan = self.plan
-            if plan is None:
-                # If there is no plan, create a new one
-                plan = self.get_action_plan_from_memory(state)
-                print(f"[INFO] Agent {self.player_id} created a new plan: {plan}")
-                self.plan = None if plan == [] else plan
-            if plan is not None:
-                # If there is a plan
-                print(plan)
-                action = plan[0][1]
-                # Remove the first action from the plan
-                self.plan = plan[1:]
-                # If the plan is empty, set it to None
-                if not self.plan:
-                    self.plan = None
-
-                print(f"[INFO] Agent {self.player_id} executed action from plan: {action}")
+        # if action is None:
+        #     plan = self.plan
+        #     if plan is None:
+        #         # If there is no plan, create a new one
+        #         plan = self.get_action_plan_from_memory(state)
+        #         print(f"[INFO] Agent {self.player_id} created a new plan: {plan}")
+        #         self.plan = None if plan == [] else plan
+        #     if plan is not None:
+        #         action = plan[0][1]
+        #         self.plan = plan[1:]
+        #         if not self.plan:
+        #             self.plan = None
+        #         print(f"[INFO] Agent {self.player_id} executed action from plan: {action}")
 
         if action is None:
             action = self.get_non_recent_action(state)
@@ -267,6 +260,7 @@ class IMRLAgent(Agent):
         # Get the action plan for the best feature
         print(best_feature.environment_type)
         print(TYPE_TO_CODE[POT])
+        # TODO change this into a more generalized function
         if best_feature.environment_type is TYPE_TO_CODE[ONION_DISPENSER]:
             return self.medium_level_action_manager.pickup_onion_actions(counter_pickup_objects)
         elif best_feature.environment_type is TYPE_TO_CODE[TOMATO_DISPENSER]:
@@ -363,8 +357,26 @@ if __name__ == "__main__":
     agent2.save_memory_to_json(base_dir, filename="agent2_memory.json")
 
 # TODO
-# - Include the pot state in the memory
 # - If the agent explores a new object it should explore interacting with all known environment types with that object
 # -  - If the agent gets an interaction with the newly discovered object, it should 'know' how to gain the object again to interact with the new object
 # - If the agent explores a new environment type it should explore interacting with all known objects with that environment type
 # -  - If the agent gets an interaction with the newly discovered environment type, it should 'know' how to gain the object again to interact with the new environment type
+# - Include the pot state in the memory
+
+
+# Questions for Sebastian
+# I am not really making a competence progress motivation. CPM is not really applicable in this situation since the agent
+# is not really learning anything. It is just exploring the environment and trying to find new interactions.
+# I think this is closer to effectance motivation. The agent is trying to find new interactions and explore the environment.
+# I think this is a good motivation for the agent to have. It is not really learning anything, but it is trying to find new interactions.
+# If employed in a new environment, the agent should be able to be effective rather quickly since it has a lot of interactions in its memory.
+
+# I am struggling to find an effective way to choose which action to take. If the agent has interacted with all the things in the environment
+# it knows everything, what to do next? Since the actions in this environment are fixed and not random, if the agent interacted with everything
+# using every object, it is done learning.
+
+# Currently the agent is quite shortsighted. It only looks at the last action it took and the last state it was in. I feel like this is close to effectance
+# but without calculating future states, it will never be the most efficient program, what do we want to prioritise?
+
+# The agent will for sure struggle with the fact that the soup needs to cook for 20seconds. Since the agent cannot couple
+# its actions to the time it takes to cook the soup, it will not be able to learn that it needs to wait for the soup to cook.
