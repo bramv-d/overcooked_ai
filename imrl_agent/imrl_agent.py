@@ -125,19 +125,19 @@ class IMRLAgent(Agent):
         action = self.get_curious_interact_action(
             state)  # If the agent coincidentally has an adjacent interesting tile, it will interact with it.
 
-        # if action is None:
-        #     plan = self.plan
-        #     if plan is None:
-        #         # If there is no plan, create a new one
-        #         plan = self.get_action_plan_from_memory(state)
-        #         print(f"[INFO] Agent {self.player_id} created a new plan: {plan}")
-        #         self.plan = None if plan == [] else plan
-        #     if plan is not None:
-        #         action = plan[0][1]
-        #         self.plan = plan[1:]
-        #         if not self.plan:
-        #             self.plan = None
-        #         print(f"[INFO] Agent {self.player_id} executed action from plan: {action}")
+        if action is None:
+            plan = self.plan
+            if plan is None:
+                # If there is no plan, create a new one
+                plan = self.get_action_plan_from_memory(state)
+                print(f"[INFO] Agent {self.player_id} created a new plan: {plan}")
+                self.plan = None if plan == [] else plan
+            if plan is not None:
+                action = plan[0][1]
+                self.plan = plan[1:]
+                if not self.plan:
+                    self.plan = None
+                print(f"[INFO] Agent {self.player_id} executed action from plan: {action}")
 
         if action is None:
             action = self.get_non_recent_action(state)
@@ -376,7 +376,21 @@ if __name__ == "__main__":
 # using every object, it is done learning.
 
 # Currently the agent is quite shortsighted. It only looks at the last action it took and the last state it was in. I feel like this is close to effectance
-# but without calculating future states, it will never be the most efficient program, what do we want to prioritise?
+# but without calculating future states, it will never be the most efficient program, what do we want to prioritize?
+# Believe desire intention framework, also add a learning component.
 
-# The agent will for sure struggle with the fact that the soup needs to cook for 20seconds. Since the agent cannot couple
+# Curiosity component
+# Effectance
+# Frustration-ish
+# Collaboration
+
+# When are the agents collaborating?
+# Maybe we need to add an intrinsic reward. So for exploring the environment fast the agent gets a higher reward.
+
+# TODO
+# Look into how the overcooked_AI agents are implemented. Do they completely reuse the state or do they create a new state?
+# Can they reuse the agent which learned in a specific environment to another environment?
+
+
+# The agent will for sure struggle with the fact that the soup needs to cook for 20 seconds. Since the agent cannot couple
 # its actions to the time it takes to cook the soup, it will not be able to learn that it needs to wait for the soup to cook.
