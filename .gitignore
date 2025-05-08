@@ -162,11 +162,9 @@ data/joint_ppo_runs/
 data/ppo_exp/
 
 #demo gitignore
-*~
 package-lock.json
 node_modules/
 **/.DS_Store
-**/.vscode/
 **/old/
 **/master_agents/
 **/__pycache__/
@@ -176,3 +174,4 @@ node_modules/
 
 # Ignore copied overcooked_ai directory in server
 src/overcooked_demo/server/overcooked_ai/
+/imrl_agent/trajectory/images/

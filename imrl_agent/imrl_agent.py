@@ -355,9 +355,10 @@ if __name__ == "__main__":
     results = evaluate_agent_pair(AgentPair(agent1, agent2), layout_name)
 
     # Desired base directory
-    base_dir = "/Users/bram/Documents/Afstuderen/images/trajectories"
+    base_dir = "/Users/bram/Documents/Afstuderen/imrl_agent/trajectory"
 
-    StateVisualizer().display_rendered_trajectory(results, img_directory_path=base_dir, ipython_display=False)
+    StateVisualizer().display_rendered_trajectory(results, img_directory_path=base_dir + "/images",
+                                                  ipython_display=False)
     agent1.save_memory_to_json(base_dir, filename="agent1_memory.json")
     agent2.save_memory_to_json(base_dir, filename="agent2_memory.json")
 
