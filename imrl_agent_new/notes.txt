@@ -1,28 +1,4 @@
-I am starting over again. I feel like the things I previously did were a bit to random and did not follow any idea.
-For now I want to follow the ideas from IMGEL more closely and match that in the code as well.
-The idea described by them is the following
+Working on the knowledge base class for step 1.
+For now I am going to use the parameter from the paper which seems to make more sense.
 
-01  Initialize knowledge      E ← ∅
-02  Initialize goal space     G, goal policies γk, and goal-space policy Γ
-03  Initialize meta-policies  Π  (exploitation) and Π′ (exploration)
-04  Launch asynchronously the two loops below
-
-05  Exploration loop
-06      Observe context c
-07      Choose goal-space Gk            with Γ
-08      Choose goal g ∈ Gk              with γk
-09      Choose policy parameters θ      with Π′  (to pursue g in context c)
-10      Execute roll-out of πθ          → trajectory τ
-11      Compute outcome  oτ             from τ
-12      Compute fitness   f = fg(τ)     for the chosen goal g
-13      Compute intrinsic reward
-            ri = IR(E, c, g, θ, oτ, f)
-14      Update exploration meta-policy  Π′ with (E, c, θ, τ, oτ)
-15      Update goal policy              γk with (E, c, g, oτ, f, ri)
-16      Update goal-space policy        Γ  with (E, c, k, g, oτ, f, ri)
-17      Update knowledge                E  with (c, g, θ, τ, oτ, f, ri)
-
-18  Exploitation loop
-19      Update exploitation meta-policy Π  with E   (e.g., batch-train DNN/SVM/GMM)
-
-20  Return final meta-policy Π
+Also I am writing proper test files for every function to make everything a bit more robust
