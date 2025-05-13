@@ -2,3 +2,7 @@ Working on the knowledge base class for step 1.
 For now I am going to use the parameter from the paper which seems to make more sense.
 
 Also I am writing proper test files for every function to make everything a bit more robust
+
+Added the goal spaces for the agent. Probably still need to refine this a bit.
+
+Working on the outcome. This is the information that is saved for each rollout which is used for training the policies and nn search

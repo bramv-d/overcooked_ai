@@ -1,19 +1,18 @@
-# knowledge_base.py
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Tuple, Dict, Any
 import datetime as dt
 import numpy as np
-from sklearn.neighbors import KDTree   # pip install scikit-learn
+from sklearn.neighbors import KDTree
 
 # ---------- 1. A single experiment record ----------
 @dataclass
 class ExperimentRecord:
     # High-level information
-    context:  np.ndarray                 # shape = (C,)
-    goal:     np.ndarray                 # shape = (G,)
+    context:  np.ndarray                 # shape = (C,), holds the context in which the policy was used
+    goal:     np.ndarray                 # shape = (G,), the goal to reach using the policy
     theta:    np.ndarray                 # policy params you executed
-    outcome:  np.ndarray                 # shape = (O,)  derived from τ
+    outcome:  np.ndarray                 # shape = (O,)  derived from τ, the outcome of the performed policy
     fitness:  float
     intrinsic_reward: float
 

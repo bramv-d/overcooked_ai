@@ -1,46 +1,49 @@
+# outcome.py
 import numpy as np
-from typing import List
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedState
+
+from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, PlayerState
 
 
-OUTCOME_DIM = 15  # must match the tests and goals.py
-
-
-def outcome_from_trajectory(traj: List[OvercookedState]) -> np.ndarray:
+def extract_outcome(state: OvercookedState, player: PlayerState, grid_world: OvercookedGridworld, soups_delivered) -> np.ndarray:
     """
-    Convert the *final* OvercookedState in `traj` into a 15‑dim vector:
-
-      [p0_x, p0_y, p1_x, p1_y, holding0, holding1,
-       pot0_contents, pot0_timer,
-       pot1_contents, pot1_timer,
-       pot2_contents, pot2_timer,
-       dishes_served, time_elapsed, collisions]
-
-    Only the fields we currently need are filled; the rest stay zero.
+    Build a 9-dim outcome vector from the final env state.
+    The saved outcome of a rollout.
     """
-    s_final = traj[-1]
-    grid = s_final.mdp
-    pots = grid.all_pot_indices  # e.g. [(5,3), (6,3), (7,3)]
 
-    vec = np.zeros(OUTCOME_DIM, dtype=np.float32)
+    return np.array([
+        player.pos_and_or,                                                              # Agent position
+        item_to_int(player.get_object()) if player.has_object() else 0,                 # Agent object
+        grid_world.get_pot_states(state),                                               # Numer of items in the pot //TODO Im unsure how to save the pot_state
+        soups_delivered                                                                 # The number of correctly delivered soups
+    ], dtype=np.float32)
 
-    # players ---------------------------------------------------------------
-    vec[0], vec[1] = s_final.players[0].position
-    vec[2], vec[3] = s_final.players[1].position
-    vec[4] = s_final.players[0].held_object.name_as_int()  # 0‑n mapping
-    vec[5] = s_final.players[1].held_object.name_as_int()
+from enum import IntEnum
 
-    # pots ------------------------------------------------------------------
-    for pot_i, (x, y) in enumerate(pots[:3]):          # cap at 3 pots
-        pot = grid.get_pot_at_loc_if_exists((x, y))
-        base = 6 + 2 * pot_i
-        if pot:
-            vec[base] = pot.get_num_ingredients()
-            vec[base + 1] = pot.cooking_tick if pot.is_cooking else 0
+class ItemCode(IntEnum):
+    """Compact integer codes for objects the chef can hold or deliver."""
+    NOTHING   = 0
+    ONION     = 1
+    TOMATO    = 2
+    BOWL      = 3
+    SOUP      = 4
+    DIRTY_DISH= 5          # optional – add more if your env uses them
 
-    # global stats ----------------------------------------------------------
-    vec[12] = s_final.soup_served
-    vec[13] = s_final.timestep
-    vec[14] = s_final.collisions
+# ---------- helpers ----------------------------------------------------------
+def item_to_int(item_name: str | None) -> int:
+    """
+    Map an Overcooked item string (or None) to a compact int code.
+    Unknown items default to 0 (NOTHING).
+    """
+    if item_name is None:
+        return ItemCode.NOTHING.value
+    try:
+        return ItemCode[item_name.upper()].value
+    except KeyError:
+        return ItemCode.NOTHING.value
 
-    return vec
+def int_to_item(code: int) -> str:
+    """Reverse lookup: from int to canonical item name."""
+    try:
+        return ItemCode(code).name.lower()
+    except ValueError:
+        return "unknown"

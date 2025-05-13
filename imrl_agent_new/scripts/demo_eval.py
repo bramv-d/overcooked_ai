@@ -14,25 +14,12 @@ from overcooked_ai_py.agents.benchmarking import AgentEvaluator
 from overcooked_ai_py.data.layouts.layouts import layouts
 from overcooked_ai_py.visualization.state_visualizer import StateVisualizer
 
-from imrl_agent_new.core.memory import EpisodicMemory
-from imrl_agent_new.core.goal_policy import EpsilonGreedyBandit
-from imrl_agent_new.core.exploration_policy import LinearSamplingPolicy
 from imrl_agent_new.overcooked.agent import ModularIMGEPAgent
 
 
 # --------------------------------------------------------------------------- #
 def build_agent_pair(layout_name: str) -> AgentPair:
-    memory = EpisodicMemory()
-    Gamma = EpsilonGreedyBandit(epsilon=0.3)
-    # θ  = 4 motion actions × 20 obs dims = 80
-    Pi_prime = LinearSamplingPolicy(feat_dim=24, theta_dim=80)
 
-    a0 = ModularIMGEPAgent(0, memory, Gamma, Pi_prime)
-    a1 = ModularIMGEPAgent(1, memory, Gamma, Pi_prime)
-    for a in (a0, a1):
-        a.reset_episode(layout_name)
-
-    return AgentPair(a0, a1)
 
 
 def evaluate(agent_pair: AgentPair, layout: str, horizon: int = 400):
