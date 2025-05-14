@@ -4,18 +4,33 @@ import numpy as np
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, PlayerState
 
 
-def extract_outcome(state: OvercookedState, player: PlayerState, grid_world: OvercookedGridworld, soups_delivered) -> np.ndarray:
+# outcome.py
+import numpy as np
+
+def extract_outcome(
+    state: OvercookedState,
+    player: PlayerState,
+    grid_world: OvercookedGridworld,
+    soups_delivered: int
+) -> np.ndarray:
     """
-    Build a 9-dim outcome vector from the final env state.
-    The saved outcome of a rollout.
+    Returns a 4-dim outcome vector  φ(τ) = [x, y, inv_code, soups]  for now.
+    Slot 3 (pot_state) will be added later.
     """
 
-    return np.array([
-        player.pos_and_or,                                                              # Agent position
-        item_to_int(player.get_object()) if player.has_object() else 0,                 # Agent object
-        grid_world.get_pot_states(state),                                               # Numer of items in the pot //TODO Im unsure how to save the pot_state
-        soups_delivered                                                                 # The number of correctly delivered soups
-    ], dtype=np.float32)
+    # ----- 0-1 : agent (x, y) ------------------------------------------------
+    x, y = player.position.x, player.position.y        # ints 0 … width-1 / height-1
+
+    # ----- 2   : held-object code -------------------------------------------
+    inv_code = item_to_int(player.get_object()) if player.has_object() else 0
+
+    # ----- 3   : placeholder for pot state (to be filled in later) ----------
+    pot_code = 0                             # PotCode.EMPTY for now
+
+    # ----- 4   : soups delivered --------------------------------------------
+    soups = soups_delivered
+
+    return np.array([x, y, inv_code, pot_code, soups], dtype=np.float32)
 
 from enum import IntEnum
 
@@ -26,7 +41,6 @@ class ItemCode(IntEnum):
     TOMATO    = 2
     BOWL      = 3
     SOUP      = 4
-    DIRTY_DISH= 5          # optional – add more if your env uses them
 
 # ---------- helpers ----------------------------------------------------------
 def item_to_int(item_name: str | None) -> int:

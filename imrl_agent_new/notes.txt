@@ -5,4 +5,7 @@ Also I am writing proper test files for every function to make everything a bit 
 
 Added the goal spaces for the agent. Probably still need to refine this a bit.
 
-Working on the outcome. This is the information that is saved for each rollout which is used for training the policies and nn search
+Working on the outcome. This is the information that is saved for each rollout which is used for training the policies and nn search.
+
+Further defined the goal spaces with more logical choices. Currently used the rollouts that were needed to retrieve the goal. If retrieved in a small amount of time the reward is higher.
+Also refined the outcomes based on this/
