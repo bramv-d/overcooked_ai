@@ -14,4 +14,4 @@ sys.path.insert(0, str(ROOT))          # ensure project root is importable
 if __name__ == "__main__":
     # -q  : quiet, only failing tests shown
     # -s  : show print output (useful for debugging)
-    sys.exit(pytest.main(["-s", str(ROOT / "tests")]))
+    sys.exit(pytest.main(["-q", str(ROOT / "tests")]))

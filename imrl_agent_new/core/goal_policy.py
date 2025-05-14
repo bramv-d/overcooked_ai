@@ -1,50 +1,84 @@
+# goal_policy.py
 import random
-from collections import defaultdict, Counter
+from collections import defaultdict
 from typing import Dict, Tuple, Any
+
 
 class GoalSpacePolicy:
     """
-    ε-greedy non-stationary bandit over goal-spaces.
-    80 % exploit   – pick space ∝ current averaged learning-progress
-    20 % explore   – uniform random
+    ε-greedy, non-stationary bandit over goal-spaces.
+
+    •  ε %  of the time  → uniform exploration
+    • (1-ε) % of the time
+        – if at least one space has positive avg-LP → sample ∝ LP (soft max)
+        – else fallback to uniform   (no progress anywhere yet)
+
+    Learning-progress is tracked with an exponential moving average so
+    old data is forgotten and the agent can return to a space if it
+    starts improving again.
     """
-    def __init__(self, goal_spaces: Dict[str, Any], epsilon: float = 0.20):
+
+    def __init__(
+        self,
+        goal_spaces: Dict[str, Any],
+        *,
+        epsilon: float = 0.20,
+        lp_alpha: float = 0.10,           # EMA smoothing factor
+    ):
         self.spaces: Dict[str, Any] = goal_spaces
-        self.epsilon: float = epsilon
+        self.epsilon = epsilon
+        self.alpha   = lp_alpha
 
-        # running stats
-        self.avg_progress = defaultdict(float)     # r̄_k
-        self.count        = Counter()              # how many updates per space
+        # running exponential averages of intrinsic reward
+        self.avg_lp = defaultdict(float)    # r̄_k  (initially 0)
 
-    # ------------------------------------------------------------------ public
-    def next_goal(self, context: Any) -> Tuple[str, Any]:
+    # ---------------------------------------------------------------- PUBLIC
+    def next_goal(self, context: Any | None = None) -> Tuple[str, Any]:
         """
-        Returns (space_id, g) where g is a concrete goal vector from that space.
-        context is kept for future extensions but unused in default implementation.
-        """
-        # 1) choose goal-space k
-        global k
-        if random.random() < self.epsilon or not self.avg_progress:
-            k = random.choice(list(self.spaces))          # pure exploration
-        else:                                             # exploit LP
-            weights = {k: max(0.0, lp) for k, lp in self.avg_progress.items()}
-            total   = sum(weights.values()) or 1e-6       # avoid /0
-            r = random.random() * total
-            acc = 0.0
-            for k, w in weights.items():
-                acc += w
-                if acc >= r:
-                    break
+        Returns (space_id, goal_vector g).
 
-        # 2) sample concrete goal inside chosen space
-        g = self.spaces[k].sample()
-        return k, g
+        `context` kept for future use (e.g. context-dependent priors) but
+        ignored in this simple implementation.
+        """
+        # ---------- choose a space -----------------------------------------
+        if random.random() < self.epsilon:
+            space_id = random.choice(list(self.spaces))           # pure explore
+        else:
+            # exploit: soft-probability ∝ max(avg_lp, 0)
+            weights = {k: max(0.0, self.avg_lp[k]) for k in self.spaces}
+            total   = sum(weights.values())
+            if total == 0.0:                                       # no progress yet
+                space_id = random.choice(list(self.spaces))
+            else:
+                r = random.random() * total
+                acc = 0.0
+                for k, w in weights.items():
+                    acc += w
+                    if acc >= r:
+                        space_id = k
+                        break
 
-    def update(self, k: str, r_i: float):
+        # ---------- sample goal inside that space --------------------------
+        g = self.spaces[space_id].sample()
+        return space_id, g
+
+    def update(self, space_id: str, intrinsic_reward: float):
         """
-        Call this **only for exploitation episodes** (the 20 % that used Π).
-        Adds intrinsic reward r_i to the running mean for space k.
+        Call AFTER an *exploitation* episode with Π.
+
+        Updates the exponential moving average of learning-progress for
+        the given space.
         """
-        self.count[k] += 1
-        n = self.count[k]
-        self.avg_progress[k] += (r_i - self.avg_progress[k]) / n
+        old = self.avg_lp[space_id]
+        new = old * (1.0 - self.alpha) + intrinsic_reward * self.alpha
+        self.avg_lp[space_id] = new
+
+    # ---------------------------------------------------------------- HELPERS
+    def refresh_spaces(self, new_spaces: Dict[str, Any]):
+        """
+        Replace the dict of goal-spaces (e.g. when you load a new layout).
+        Keeps existing LP stats for overlapping keys, initialises new keys to 0.
+        """
+        self.spaces = new_spaces
+        for k in new_spaces:
+            self.avg_lp.setdefault(k, 0.0)
