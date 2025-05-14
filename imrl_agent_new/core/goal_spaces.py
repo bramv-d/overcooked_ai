@@ -1,5 +1,5 @@
 import numpy as np
-
+import random
 from imrl_agent_new.overcooked.outcome import ItemCode, item_to_int
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, PlayerState
 
@@ -46,7 +46,8 @@ PICKABLE_OBJECTS = [
 def make_pick_object_space(length_of_trajectory: int) -> GoalSpace:
     """Goal: hold a requested object; reward falls as pickup time ↑."""
     def sampler():
-        return np.array([np.random.choice(PICKABLE_OBJECTS).value], dtype=np.int8)
+        code = random.choice(PICKABLE_OBJECTS).value
+        return np.array([code], dtype=np.int8)
 
     def fitness(o, g, *, pick_step=None):
         if pick_step is None or int(o[1]) != int(g[0]):      # slot 1 = held
