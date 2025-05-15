@@ -63,8 +63,10 @@ class KnowledgeBase:
             self._kdtree = KDTree(self._index_data[1:])  # skip first dummy row
             self._index_dirty = False
         query = np.concatenate([context, outcome]).reshape(1, -1)
-        dist, idx = self._kdtree.query(query, k=k)
-        return idx[0], dist[0]
+        d, i = self._kdtree.query(query, k=k)  # both are 2-D arrays
+        if k == 1:
+            return int(i[0][0]), float(d[0][0])  # return scalars
+        return i[0], d[0]
 
     # ---- convenience helpers -----------------------------------------------
 

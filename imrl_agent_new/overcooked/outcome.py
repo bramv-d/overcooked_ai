@@ -1,7 +1,9 @@
 # outcome.py
+import string
+
 import numpy as np
 
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, PlayerState
+from overcooked_ai_py.mdp.overcooked_mdp import ObjectState, OvercookedGridworld, OvercookedState, PlayerState
 
 
 # outcome.py
@@ -19,7 +21,7 @@ def extract_outcome(
     """
 
     # ----- 0-1 : agent (x, y) ------------------------------------------------
-    x, y = player.position.x, player.position.y        # ints 0 … width-1 / height-1
+    x, y = player.position[0], player.position[1]        # ints 0 … width-1 / height-1
 
     # ----- 2   : held-object code -------------------------------------------
     inv_code = item_to_int(player.get_object()) if player.has_object() else 0
@@ -43,7 +45,7 @@ class ItemCode(IntEnum):
     SOUP      = 4
 
 # ---------- helpers ----------------------------------------------------------
-def item_to_int(item_name: str | None) -> int:
+def item_to_int(item_name: ObjectState) -> int:
     """
     Map an Overcooked item string (or None) to a compact int code.
     Unknown items default to 0 (NOTHING).
@@ -51,7 +53,7 @@ def item_to_int(item_name: str | None) -> int:
     if item_name is None:
         return ItemCode.NOTHING.value
     try:
-        return ItemCode[item_name.upper()].value
+        return ItemCode[(item_name.name.upper())].value
     except KeyError:
         return ItemCode.NOTHING.value
 

@@ -10,4 +10,6 @@ Working on the outcome. This is the information saved for each rollout which is 
 Further defined the goal spaces with more logical choices. Currently used the rollouts needed to retrieve the goal. If retrieved in a small amount of time the reward is higher.
 Also refined the outcomes based on this.
 
-Added tests for the goal_spaces.py
+Added tests for the goal_spaces.py.
+
+Made the agent perform its rollouts and added some statistics to the rollouts.

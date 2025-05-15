@@ -49,7 +49,7 @@ def make_pick_object_space(length_of_trajectory: int) -> GoalSpace:
         code = random.choice(PICKABLE_OBJECTS).value
         return np.array([code], dtype=np.int8)
 
-    def fitness(o, g, *, pick_step=None):
+    def fitness(o, g, *, pick_step=None, **_):
         if pick_step is None or int(o[1]) != int(g[0]):      # slot 1 = held
             return 0.0
         return 1.0 - (pick_step / max(length_of_trajectory, 1))           # fast = high
