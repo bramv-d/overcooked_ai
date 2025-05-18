@@ -12,7 +12,6 @@ import json
 import logging
 
 # All other imports must come after patch to ensure eventlet compatibility
-import pickle
 import queue
 from datetime import datetime
 from threading import Lock
@@ -231,7 +230,7 @@ def _leave_game(user_id):
     # Acquire this game's lock to ensure all global state updates are atomic
     with game.lock:
         # Update socket state maintained by socketio
-        leave_room(game.id)
+        leave_room(game.agent_id)
 
         # Update user data maintained by this app
         leave_curr_room(user_id)
@@ -243,7 +242,7 @@ def _leave_game(user_id):
             game.remove_spectator(user_id)
 
         # Whether the game was active before the user left
-        was_active = game.id in ACTIVE_GAMES
+        was_active = game.agent_id in ACTIVE_GAMES
 
         # Rebroadcast data and handle cleanup based on the transition caused by leaving
         if was_active and game.is_empty():
@@ -254,7 +253,7 @@ def _leave_game(user_id):
             cleanup_game(game)
         elif not was_active:
             # Waiting -> Waiting
-            emit("waiting", {"in_game": True}, room=game.id)
+            emit("waiting", {"in_game": True}, room=game.agent_id)
         elif was_active and game.is_ready():
             # Active -> Active
             pass
@@ -278,20 +277,20 @@ def _create_game(user_id, game_name, params={}):
         else:
             spectating = True
             game.add_spectator(user_id)
-        join_room(game.id)
-        set_curr_room(user_id, game.id)
+        join_room(game.agent_id)
+        set_curr_room(user_id, game.agent_id)
         if game.is_ready():
             game.activate()
-            ACTIVE_GAMES.add(game.id)
+            ACTIVE_GAMES.add(game.agent_id)
             emit(
                 "start_game",
                 {"spectating": spectating, "start_info": game.to_json()},
-                room=game.id,
+                room=game.agent_id,
             )
             socketio.start_background_task(play_game, game, fps=6)
         else:
-            WAITING_GAMES.put(game.id)
-            emit("waiting", {"in_game": True}, room=game.id)
+            WAITING_GAMES.put(game.agent_id)
+            emit("waiting", {"in_game": True}, room=game.agent_id)
 
 
 #####################

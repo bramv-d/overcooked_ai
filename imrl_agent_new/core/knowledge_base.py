@@ -1,9 +1,12 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import List, Tuple, Dict, Any
+
 import datetime as dt
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Tuple
+
 import numpy as np
 from sklearn.neighbors import KDTree
+
 
 # ---------- 1. A single experiment record ----------
 @dataclass
@@ -47,6 +50,7 @@ class KnowledgeBase:
             "context_dim": context_dim,
             "outcome_dim": outcome_dim,
         }
+        self.outcome_dim = outcome_dim
 
     # ---- public API ---------------------------------------------------------
 

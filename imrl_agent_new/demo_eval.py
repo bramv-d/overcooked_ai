@@ -1,22 +1,26 @@
 # two_agent_demo.py
-import random
 
-import numpy as np
-
+from imrl_agent_new.helper.max_plan_cost import max_plan_cost
+from imrl_agent_new.overcooked.agent import IMGEPAgent
 from overcooked_ai_py.data.layouts.layouts import layouts
-from overcooked_ai_py.mdp.overcooked_mdp   import OvercookedGridworld
-from overcooked_ai_py.mdp.overcooked_env   import OvercookedEnv
-from imrl_agent_new.overcooked.agent       import IMGEPAgent
+from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
+from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
+from overcooked_ai_py.planning.planners import MotionPlanner
 
 # ---------------------------------------------------------------- settings
 layout_name       = layouts[20]          # any layout string
 HORIZON           = 400
 
 # ---------------------------------------------------------------- env + agents
-mdp  = OvercookedGridworld.from_layout_name(layout_name)
-env  = OvercookedEnv.from_mdp(mdp, horizon=HORIZON)
+mdp = OvercookedGridworld.from_layout_name(layout_name)
+env = OvercookedEnv.from_mdp(mdp, horizon=HORIZON)
 
-agents = [IMGEPAgent(mdp, _, horizon=HORIZON) for _ in range(2)]
+counter = mdp.get_counter_locations()
+mp = MotionPlanner(mdp, counter)
+
+max_dist = max_plan_cost(mp)  # longest path in the layout, used for normalization
+
+agents = [IMGEPAgent(mdp, agent_id, horizon=HORIZON, mp=mp, max_dist=max_dist) for agent_id in range(2)]
 
 # ---------------------------------------------------------------- run one roll-out
 state = env.reset()
@@ -27,9 +31,10 @@ scores, dishes, fitnesses, r_is = [], [], [], []
 stats_log = []
 
 for roll in range(ROLL_OUTS):
-    state = env.reset()
+    env.reset()
     for ag in agents: ag.reset()
 
+    state = env.state
     done = False
     while not done:
         joint = [ag.action(state)[0] for ag in agents]

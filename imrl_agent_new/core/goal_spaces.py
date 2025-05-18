@@ -1,39 +1,42 @@
-import numpy as np
 import random
+
+import numpy as np
+
 from imrl_agent_new.overcooked.outcome import ItemCode, item_to_int
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, PlayerState
 
 
 class GoalSpace:
-    def __init__(self, name, dim, sampler, fitness_fn, success_fn=None):
+    def __init__(self, name, dim, sampler, encode_fn, fitness_fn, success_fn=None):
         self.name    = name
         self.dim     = dim
         self.sample  = sampler
         self.fitness = fitness_fn
+        self.encode = encode_fn
         # if None, the space never triggers early stop
         self.success = success_fn or (lambda obs, g: False)
 
-# Navigation: match agent XY
-def make_nav_space(    grid_world: OvercookedGridworld, length_of_trajectory: int
-) -> GoalSpace:
-    coords = grid_world.get_valid_player_positions()     # list[(x,y)]
-    # ------------- goal sampler ------------------------------------------------
-    def nav_sampler() -> np.ndarray:
-        return np.array(coords[np.random.randint(len(coords))],
-                        dtype=np.int8)
 
-    # ------------- success predicate ------------------------------------------
-    def nav_success(player, g) -> bool:
-        return player.pos.x == int(g[0]) and player.pos.y == int(g[1])
-
-    # ------------- fitness: time-shaped binary --------------------------------
-    def nav_fitness(o, g, *, reach_step=None, **_) -> float:
-        """o[0], o[1] are agent x,y  (you restored explicit pos slots)."""
-        if reach_step is None:                       # never reached tile
-            return 0.0
-        return 1.0 - (reach_step / max(length_of_trajectory, 1))
-
-    return GoalSpace("NAV", 2, nav_sampler, nav_fitness, nav_success)
+# Navigation: match agent XY TODO I think we can remove the nav space since we do not include the nav in the obs_to_vec nor outcome
+# def make_nav_space(    grid_world: OvercookedGridworld, length_of_trajectory: int
+# ) -> GoalSpace:
+#     coords = grid_world.get_valid_player_positions()     # list[(x,y)]
+#     # ------------- goal sampler ------------------------------------------------
+#     def nav_sampler() -> np.ndarray:
+#         return np.array(coords[np.random.randint(len(coords))],
+#                         dtype=np.int8)
+#
+#     # ------------- success predicate ------------------------------------------
+#     def nav_success(player, g) -> bool:
+#         return player.pos.x == int(g[0]) and player.pos.y == int(g[1])
+#
+#     # ------------- fitness: time-shaped binary --------------------------------
+#     def nav_fitness(o, g, *, reach_step=None, **_) -> float:
+#         """o[0], o[1] are agent x,y  (you restored explicit pos slots)."""
+#         if reach_step is None:                       # never reached tile
+#             return 0.0
+#         return 1.0 - (reach_step / max(length_of_trajectory, 1))
+#
+#     return GoalSpace("NAV", 2, nav_sampler, nav_fitness, nav_success)
 
 
 PICKABLE_OBJECTS = [
@@ -42,6 +45,8 @@ PICKABLE_OBJECTS = [
     ItemCode.BOWL,
     # ItemCode.SOUP TODO define if we want to add this back, it is a stepping stone
 ]
+
+MAX_ITEM_CODE = 3
 
 def make_pick_object_space(length_of_trajectory: int) -> GoalSpace:
     """Goal: hold a requested object; reward falls as pickup time ↑."""
@@ -58,7 +63,14 @@ def make_pick_object_space(length_of_trajectory: int) -> GoalSpace:
         held = item_to_int(player.get_object()) if player.has_object() else 0
         return held == int(g[0])
 
-    return GoalSpace("PICK_OBJECT", 1, sampler, fitness, success)\
+    def pick_encode(g):
+        """
+        Encode item goal as single scalar ∈[0,1].
+        g = [item_code]  (0 .. MAX_ITEM_CODE)
+        """
+        return np.array([int(g[0]) / MAX_ITEM_CODE], dtype=np.float32)  # length-1
+
+    return GoalSpace("PICK_OBJECT", 1, sampler=sampler, fitness_fn=fitness, success_fn=success, encode_fn=pick_encode)
 
 
 # def make_pot_filled_space(
@@ -108,6 +120,5 @@ def make_pick_object_space(length_of_trajectory: int) -> GoalSpace:
 
 def create_goal_space(grid_world, length_of_trajectory):
     return {
-        "nav"         : make_nav_space(grid_world, length_of_trajectory),
         "pick_object" : make_pick_object_space(length_of_trajectory),
     }

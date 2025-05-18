@@ -13,3 +13,8 @@ Also refined the outcomes based on this.
 Added tests for the goal_spaces.py.
 
 Made the agent perform its rollouts and added some statistics to the rollouts.
+
+Created a normalized vector which contains all the information about the rollouts. This is used to train the neural network.
+
+Worked a lot on the agent class. Mostly tried to get the neuro-policy working.
+
