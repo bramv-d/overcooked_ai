@@ -1,5 +1,8 @@
 # two_agent_demo.py
 
+import copy
+
+from imrl_agent_new.helper.create_gif import create_gif
 from imrl_agent_new.helper.max_plan_cost import max_plan_cost
 from imrl_agent_new.overcooked.agent import IMGEPAgent
 from overcooked_ai_py.data.layouts.layouts import layouts
@@ -36,20 +39,24 @@ for roll in range(ROLL_OUTS):
 
     state = env.state
     done = False
+
+    # -------- record trajectory -----------------------------------------
+    ep_states = [copy.deepcopy(state)]  # include start state
     while not done:
         joint = [ag.action(state)[0] for ag in agents]
         state, _, done, info = env.step(joint)
+        ep_states.append(copy.deepcopy(state))  # save each next state
 
+    # -------- finish roll-out bookkeeping -------------------------------
     for ag in agents:
         ag.finish_rollout(state, 0)
 
-    # only chef-0 for brevity
     s0 = agents[0].rollout_stats
     stats_log.append(s0)
 
-    print(f"Roll-out {roll+1:02d}: "
-          f"goal={s0.goal_space:<12s} fit={s0.fitness:.3f} "
-          f"LP={s0.intrinsic:+.3f} dishes={s0.dishes}")
+    if roll == ROLL_OUTS - 1:
+        create_gif(ep_states, mdp, roll, True)
+
 
 # ------------ summary -------------
 import numpy as np, collections as C

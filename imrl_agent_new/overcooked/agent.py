@@ -1,10 +1,11 @@
 # imrl_agent_new/imgep_agent.py
 from __future__ import annotations
 
-import numpy as np
 import random
 from dataclasses import dataclass
 from typing import Any, Dict, List
+
+import numpy as np
 
 from imrl_agent_new.core.goal_policy import GoalSpacePolicy
 from imrl_agent_new.core.goal_spaces import create_goal_space
@@ -95,20 +96,27 @@ class IMGEPAgent(Agent):
             best_idx = max(range(len(self.kb)),
                            key=lambda i: self.kb.buffer[i].fitness)
             theta_vec = self.kb.buffer[best_idx].theta
-            self.theta = NeuroPolicy(obs_dim=self.obs_dim, theta=theta_vec)
+
             self.theta = NeuroPolicy(obs_dim=self.obs_dim, theta=theta_vec)
         else:
             # exploration: mutate nearest or random
-            self.theta = self.explorer.sample_or_mutate(self.goal_vec)
+            self.theta = NeuroPolicy(obs_dim=self.obs_dim)
 
-    # ---------------------------------------------------------------- action
-    def action(self, state: OvercookedState):
-        """Return primitive action for this time-step."""
-        obs_vec = obs_to_vec(state, self.mdp, self.mp,
-                             self.agent_id, self.max_dist)
+            # ---------------------------------------------------------------- action
+
+    def action(self, state):
+        obs_vec = obs_to_vec(state, self.mdp, self.mp, self.agent_id, self.max_dist)
         g_enc = pad_goal(self.G[self.goal_space_id].encode(self.goal_vec))
 
         act_enum = self.theta.act(obs_vec, g_enc)
+
+        # ------ update meta for pick_object ----------------------------------
+        if self.goal_space_id == "pick_object":
+            target = int(self.goal_vec[0])
+            held = obs_vec[3] * 5  # undo scaling
+            if held == target and self.meta["pick_step"] is None:
+                self.meta["pick_step"] = self.t
+
         self.t += 1
         return act_enum, {}
 
