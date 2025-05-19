@@ -17,26 +17,23 @@ def create_gif(ep_states, mdp, roll, delete_img):
     }
     vis = StateVisualizer()  # reuse one visualizer
 
+    img_pref = "frame_"  # we’ll pad to 4 digits
     out_dir = base_dir / f"roll{roll + 1:02d}"
-    vis.display_rendered_trajectory(
+    trajectories_args = dict(
         trajectories=trajectories,
         trajectory_idx=0,
         img_directory_path=str(out_dir),
-        ipython_display=False  # save PNGs, no Jupyter slider
+        img_prefix=img_pref,
+        ipython_display=False,
     )
 
-    print(f"Roll-out {roll + 1:02d} dumped to {out_dir}")
-
-    out_dir = base_dir / f"roll{roll + 1:02d}"
     vis.display_rendered_trajectory(
-        trajectories=trajectories,
-        trajectory_idx=0,
-        img_directory_path=str(out_dir),
-        ipython_display=False
+        **trajectories_args, img_extension=".png"
     )
 
     # -------- make a GIF -------------------------------------------------
-    pngs = sorted(out_dir.glob("*.png"))  # frame000.png, …
+    pngs = sorted(out_dir.glob("*.png"),
+                  key=lambda p: int(p.stem.split("_")[-1]))
     frames = [imageio.imread(p) for p in pngs]
     gif_path = out_dir / "trajectory.gif"
     imageio.mimsave(gif_path, frames, duration=0.08)  # 12.5 fps (0.08 s per frame)

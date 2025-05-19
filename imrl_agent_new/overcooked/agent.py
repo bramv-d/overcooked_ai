@@ -118,6 +118,9 @@ class IMGEPAgent(Agent):
                 self.meta["pick_step"] = self.t
 
         self.t += 1
+        # Perform random action for testing
+        # act_enum = Action.ALL_ACTIONS[random.randint(0, 5)]
+
         return act_enum, {}
 
     # ---------------------------------------------------------------- finish

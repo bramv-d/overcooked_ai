@@ -28,7 +28,7 @@ agents = [IMGEPAgent(mdp, agent_id, horizon=HORIZON, mp=mp, max_dist=max_dist) f
 # ---------------------------------------------------------------- run one roll-out
 state = env.reset()
 
-ROLL_OUTS = 20
+ROLL_OUTS = 1
 scores, dishes, fitnesses, r_is = [], [], [], []
 
 stats_log = []
