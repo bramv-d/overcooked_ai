@@ -41,12 +41,10 @@ class GoalSpace:
 
 PICKABLE_OBJECTS = [
     ItemCode.ONION,
-    ItemCode.TOMATO,
-    ItemCode.BOWL,
+    # ItemCode.TOMATO,
+    # ItemCode.BOWL,
     # ItemCode.SOUP TODO define if we want to add this back, it is a stepping stone
 ]
-
-MAX_ITEM_CODE = 3
 
 def make_pick_object_space(length_of_trajectory: int) -> GoalSpace:
     """Goal: hold a requested object; reward falls as pickup time ↑."""
@@ -55,7 +53,7 @@ def make_pick_object_space(length_of_trajectory: int) -> GoalSpace:
         return np.array([code], dtype=np.int8)
 
     def fitness(o, g, *, pick_step=None, **_):
-        if pick_step is None or int(o[1]) != int(g[0]):      # slot 1 = held
+        if pick_step is None or int(o[2]) != int(g[0]):  # slot 2 = held
             return 0.0
         return 1.0 - (pick_step / max(length_of_trajectory, 1))           # fast = high
 
@@ -68,7 +66,7 @@ def make_pick_object_space(length_of_trajectory: int) -> GoalSpace:
         Encode item goal as single scalar ∈[0,1].
         g = [item_code]  (0 .. MAX_ITEM_CODE)
         """
-        return np.array([int(g[0]) / MAX_ITEM_CODE], dtype=np.float32)  # length-1
+        return np.array([int(g[0]) / len(PICKABLE_OBJECTS)], dtype=np.float32)  # length-1
 
     return GoalSpace("PICK_OBJECT", 1, sampler=sampler, fitness_fn=fitness, success_fn=success, encode_fn=pick_encode)
 

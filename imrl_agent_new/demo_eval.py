@@ -1,8 +1,6 @@
-# two_agent_demo.py
-
 import copy
 
-from imrl_agent_new.helper.create_gif import create_gif
+from imrl_agent_new.VARIABLES import HORIZON
 from imrl_agent_new.helper.max_plan_cost import max_plan_cost
 from imrl_agent_new.overcooked.agent import IMGEPAgent
 from overcooked_ai_py.data.layouts.layouts import layouts
@@ -12,7 +10,6 @@ from overcooked_ai_py.planning.planners import MotionPlanner
 
 # ---------------------------------------------------------------- settings
 layout_name       = layouts[20]          # any layout string
-HORIZON = 50
 
 # ---------------------------------------------------------------- env + agents
 mdp = OvercookedGridworld.from_layout_name(layout_name)
@@ -24,17 +21,18 @@ mp = MotionPlanner(mdp, counter)
 max_dist = max_plan_cost(mp)  # longest path in the layout, used for normalization
 
 agents = [IMGEPAgent(mdp, agent_id, horizon=HORIZON, mp=mp, max_dist=max_dist) for agent_id in range(2)]
-
+for ag in agents: ag.kb.load_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
 # ---------------------------------------------------------------- run one roll-out
 state = env.reset()
 
-ROLL_OUTS = 1
+ROLL_OUTS = 1000
 scores, dishes, fitnesses, r_is = [], [], [], []
 
 stats_log = []
 
 for roll in range(ROLL_OUTS):
-    env.reset()
+    print(roll)
+    env.reset(regen_mdp=False)
     for ag in agents: ag.reset()
 
     state = env.state
@@ -54,9 +52,10 @@ for roll in range(ROLL_OUTS):
     s0 = agents[0].rollout_stats
     stats_log.append(s0)
 
-    if roll == ROLL_OUTS - 1:
-        create_gif(ep_states, mdp, roll, True)
+    # if roll == ROLL_OUTS - 1:
+    #     create_gif(ep_states, mdp, roll, True, base_dir)
 
+for ag in agents: ag.kb.save_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
 
 # ------------ summary -------------
 import numpy as np, collections as C

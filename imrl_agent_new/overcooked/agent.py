@@ -72,6 +72,8 @@ class IMGEPAgent(Agent):
         self.meta         : Dict[str, Any] = {}
         self.use_pi: bool = False
         self.last_stats: RolloutStats | None = None
+        self.goal_reach_time_step = None
+
 
         super().__init__()
 
@@ -89,6 +91,7 @@ class IMGEPAgent(Agent):
         """
         # ---------- 1. pick goal ------------------------------------------
         self.goal_space_id, self.goal_vec = self.bandit.next_goal(None)
+        self.goal_reach_time_step = None
         self.t = 0
         self.meta = {"reach_step": None, "pick_step": None, "fill_step": None}
 
@@ -110,7 +113,18 @@ class IMGEPAgent(Agent):
     def action(self, state):
         act_enum = self.theta.act(self.t)  # obs_vec & goal enc not used
         self.t += 1
+
+        # Check if the agent has reached the goal
+        if self.check_goal_reached(state) and self.goal_reach_time_step is None:
+            self.goal_reach_time_step = self.t
+
         return act_enum, {}
+
+    def check_goal_reached(self, state: OvercookedState):
+        """Check if the agent has reached the goal."""
+        if self.G[self.goal_space_id].success(state.players[self.agent_id], self.goal_vec):
+            return True
+        return False
 
     # ---------------------------------------------------------------- finish
     def finish_rollout(self,
@@ -122,7 +136,7 @@ class IMGEPAgent(Agent):
                                   self.mdp, soups_delivered)
 
         gs = self.G[self.goal_space_id]
-        fitness = gs.fitness(outcome, self.goal_vec, **self.meta)
+        fitness = gs.fitness(outcome, self.goal_vec, pick_step=self.goal_reach_time_step)
 
         # intrinsic reward = improvement over best previous fitness
         if len(self.kb) == 0:
@@ -155,11 +169,3 @@ class IMGEPAgent(Agent):
         # bandit update only on exploitation runs
         if self.use_pi:
             self.bandit.update(self.goal_space_id, r_i)
-
-    def save_kb(self, path: str):
-        np.savez_compressed(
-            path,
-            outcomes=np.stack([r.outcome for r in self.kb.buffer]),
-            fitness=np.array([r.fitness for r in self.kb.buffer]),
-            goals=np.stack([r.goal for r in self.kb.buffer])
-        )

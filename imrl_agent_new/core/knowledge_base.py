@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import pickle
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Tuple
 
@@ -82,3 +83,16 @@ class KnowledgeBase:
     def __len__(self):
         return len(self.buffer)
 
+    # --- save & load ------------------------------------------------------------
+    def save_buffer(self, path: str):
+        """Save the full buffer to disk as a pickle file."""
+        with open(path, "wb") as f:
+            pickle.dump(self.buffer, f)
+
+    def load_buffer(self, path: str):
+        with open(path, "rb") as f:
+            self.buffer = pickle.load(f)
+        self._index_dirty = True
+        for rec in self.buffer:
+            vec = np.concatenate([rec.context, rec.outcome])
+            self._index_data = np.vstack([self._index_data, vec])

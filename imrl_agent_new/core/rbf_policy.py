@@ -1,6 +1,7 @@
 # rbf_policy.py
 import numpy as np
 
+from imrl_agent_new.VARIABLES import HORIZON
 from overcooked_ai_py.mdp.actions import Action, Direction
 
 
@@ -15,7 +16,7 @@ class RBFPolicy:
     Steps per roll-out (H) = 50       σ = 5
     """
 
-    H = 50
+    H = HORIZON
     N_BASIS = 5
     centers = np.linspace(0, H - 1, N_BASIS)  # 0 12.5 25 37.5 50
     sigma = 5.0
