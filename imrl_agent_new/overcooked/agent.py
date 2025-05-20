@@ -10,9 +10,8 @@ import numpy as np
 from imrl_agent_new.core.goal_policy import GoalSpacePolicy
 from imrl_agent_new.core.goal_spaces import create_goal_space
 from imrl_agent_new.core.knowledge_base import ExperimentRecord, KnowledgeBase
-from imrl_agent_new.core.neuro_policy import NeuroPolicy
 from imrl_agent_new.core.population_explorer import PopulationExplorer
-from imrl_agent_new.helper.obs_to_vect import obs_to_vec
+from imrl_agent_new.core.rbf_policy import RBFPolicy
 from imrl_agent_new.overcooked.outcome import extract_outcome
 from overcooked_ai_py.agents.agent import Agent
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState
@@ -63,12 +62,12 @@ class IMGEPAgent(Agent):
         # ---------- KB + explorer ------------------------------------------
         self.kb = KnowledgeBase(context_dim=1, outcome_dim=5)
         self.obs_dim = 11  # from obs_to_vec
-        self.explorer = PopulationExplorer(self.kb, NeuroPolicy, self.obs_dim)
+        self.explorer = PopulationExplorer(self.kb)
 
         # ---------- per-rollout fields -------------------------------------
         self.goal_space_id: str  | None = None
         self.goal_vec     : np.ndarray | None = None
-        self.theta: NeuroPolicy | None = None
+        self.theta: RBFPolicy | None = None
         self.t            : int = 0
         self.meta         : Dict[str, Any] = {}
         self.use_pi: bool = False
@@ -82,45 +81,35 @@ class IMGEPAgent(Agent):
 
     # ---------------------------------------------------------------- reset
     def reset(self):
-        """Called by Overcooked-AI at roll-out start."""
-        # pick new goal
+        """
+        Called by Overcooked-AI at the beginning of every roll-out.
+        • samples a new goal with Γ
+        • picks either an exploitation controller (reuse best θ)
+          or an exploration controller (mutate / random)
+        """
+        # ---------- 1. pick goal ------------------------------------------
         self.goal_space_id, self.goal_vec = self.bandit.next_goal(None)
         self.t = 0
         self.meta = {"reach_step": None, "pick_step": None, "fill_step": None}
 
-        # decide exploration vs exploitation (20 % exploit)
+        # ---------- 2. decide exploit (20 %) vs explore (80 %) ------------
         self.use_pi = (random.random() > 0.8)
 
         if self.use_pi and len(self.kb) > 0:
-            # reuse best θ so far
+            # ----- EXPLOITATION: reuse best θ so far ---------------------
             best_idx = max(range(len(self.kb)),
                            key=lambda i: self.kb.buffer[i].fitness)
-            theta_vec = self.kb.buffer[best_idx].theta
-
-            self.theta = NeuroPolicy(obs_dim=self.obs_dim, theta=theta_vec)
+            theta_vec = self.kb.buffer[best_idx].theta  # ← 20-D array
+            self.theta = RBFPolicy(theta_vec)  # deterministic run
         else:
-            # exploration: mutate nearest or random
-            self.theta = NeuroPolicy(obs_dim=self.obs_dim)
+            # ----- EXPLORATION: mutate nearest or start fresh ------------
+            self.theta = self.explorer._sample_or_mutate()  # returns RBFPolicy
 
             # ---------------------------------------------------------------- action
 
     def action(self, state):
-        obs_vec = obs_to_vec(state, self.mdp, self.mp, self.agent_id, self.max_dist)
-        g_enc = pad_goal(self.G[self.goal_space_id].encode(self.goal_vec))
-
-        act_enum = self.theta.act(obs_vec, g_enc)
-
-        # ------ update meta for pick_object ----------------------------------
-        if self.goal_space_id == "pick_object":
-            target = int(self.goal_vec[0])
-            held = obs_vec[3] * 5  # undo scaling
-            if held == target and self.meta["pick_step"] is None:
-                self.meta["pick_step"] = self.t
-
+        act_enum = self.theta.act(self.t)  # obs_vec & goal enc not used
         self.t += 1
-        # Perform random action for testing
-        # act_enum = Action.ALL_ACTIONS[random.randint(0, 5)]
-
         return act_enum, {}
 
     # ---------------------------------------------------------------- finish

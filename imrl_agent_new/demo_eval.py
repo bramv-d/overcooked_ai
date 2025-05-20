@@ -12,7 +12,7 @@ from overcooked_ai_py.planning.planners import MotionPlanner
 
 # ---------------------------------------------------------------- settings
 layout_name       = layouts[20]          # any layout string
-HORIZON           = 400
+HORIZON = 50
 
 # ---------------------------------------------------------------- env + agents
 mdp = OvercookedGridworld.from_layout_name(layout_name)

@@ -1,15 +1,15 @@
-# population_explorer.py
+# population_explorer.py   ← only the first import & constructor change
 import numpy as np
 
+from imrl_agent_new.core.rbf_policy import RBFPolicy  # NEW
+
+
 class PopulationExplorer:
-    """
-    Handles exploration controllers: pick a parent θ, mutate, and act.
-    """
-    def __init__(self, kb, PolicyClass, inp_dim):
+    def __init__(self, kb):
         self.kb = kb
-        self.PolicyClass = PolicyClass  # expected NeuroPolicy
-        self.inp_dim = inp_dim
+        self.PolicyC = RBFPolicy
         self.current = None
+
 
     # ---------------------------------------------------------------- act
     def act(self, obs_vec, goal_vec):
@@ -22,11 +22,8 @@ class PopulationExplorer:
         return self.current.theta
 
     def _sample_or_mutate(self):
-        """Return a NeuroPolicy: new random if KB empty, else mutate nearest."""
         if len(self.kb) == 0:
-            return self.PolicyClass(obs_dim=self.inp_dim)
-
-        # nearest based on outcome only (context ignored here)
+            return self.PolicyC()  # random 20-dim θ
         idx, _ = self.kb.nearest(np.array([0]), np.zeros(self.kb.buffer[0].outcome.shape))
         parent = self.kb.buffer[idx].theta
-        return self.PolicyClass(obs_dim=self.inp_dim, theta=parent).mutate()
+        return self.PolicyC(parent).mutate()

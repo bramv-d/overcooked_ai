@@ -18,3 +18,4 @@ Created a normalized vector which contains all the information about the rollout
 
 Worked a lot on the agent class. Mostly tried to get the neuro-policy working.
 
+Instead of the neuropolicy I am going to try the RBFpolicy to see if it has better results.
