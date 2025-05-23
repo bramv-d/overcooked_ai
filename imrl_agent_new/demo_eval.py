@@ -15,7 +15,7 @@ layout_name       = layouts[20]          # any layout string
 
 # ---------------------------------------------------------------- env + agents
 mdp: OvercookedGridworld = OvercookedGridworld.from_layout_name(layout_name)
-env: OvercookedEnv = OvercookedEnv.from_mdp(mdp, horizon=HORIZON)
+env: OvercookedEnv = OvercookedEnv.from_mdp(mdp, horizon=HORIZON, info_level=0)
 
 counter = mdp.get_counter_locations()
 mp = MotionPlanner(mdp, counter)
@@ -37,14 +37,14 @@ agents = [IMGEPAgent(mlam, mdp, agent_id, horizon=HORIZON, mp=mp, max_dist=max_d
 # ---------------------------------------------------------------- run one roll-out
 state = env.reset()
 
-ROLL_OUTS = 1
+ROLL_OUTS = 1000
 scores, dishes, fitnesses, r_is = [], [], [], []
 
 stats_log = []
 
 for roll in range(ROLL_OUTS):
     print(roll)
-    env.reset(regen_mdp=False)
+    env.reset(regen_mdp=True)
     for ag in agents: ag.reset()
 
     state = env.state

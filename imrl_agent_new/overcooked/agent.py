@@ -95,20 +95,26 @@ class IMGEPAgent(Agent):
         self.meta = {"reach_step": None, "pick_step": None, "fill_step": None}
 
         # 20 % exploitation, 80 % exploration
-        self.use_pi = (random.random() > 0.8)
+        self.use_pi = (random.random() > 0.5) and (len(self.kb) > 0)
 
-        if self.use_pi and len(self.kb):
-            best_idx = max(range(len(self.kb)), key=lambda i: self.kb.buffer[i].fitness)
+        # if len(self.kb) > 0:
+        #     self.use_pi = True # --- exploit: clone best policy ----
+
+        if self.use_pi:  # --- exploit: clone best policy ----
+            best_idx = np.argmax([r.fitness for r in self.kb.buffer])
             theta_vec = self.kb.buffer[best_idx].theta
-            self.theta = NeuroPolicy(obs_dim=self.obs_dim, goal_enc_dim=G_ENC, theta=theta_vec)
-        else:
-            self.theta = self.explorer.sample_or_mutate(self.goal_vec)  # NeuroPolicy
+            self.theta = NeuroPolicy(obs_dim=self.obs_dim,
+                                     goal_enc_dim=G_ENC,
+                                     theta=theta_vec)
+        else:  # --- explore: new / mutated policy --
+            self.theta = self.explorer.sample_or_mutate(self.goal_vec)
 
     # ---------------------------------------------------------------- action
     def action(self, state: OvercookedState):
         # optional success time-step logging
-        if (self.G[self.goal_space_id].success(state.players[self.agent_id], self.goal_vec)
-                and self.goal_reach_time_step is None):
+        self.t += 1
+        gs = self.G[self.goal_space_id]
+        if gs.success(state.players[self.agent_id], self.goal_vec) and self.goal_reach_time_step is None:
             self.goal_reach_time_step = self.t
 
         if self.path:
@@ -126,8 +132,12 @@ class IMGEPAgent(Agent):
         # ----------------- path planning ----------------------------------
         motion_goals = self._get_motion_goals(token, state)
         self.path = get_plan(state.players[self.agent_id].pos_and_or, motion_goals, self.mlam)
+
         if not self.path:
-            return Action.STAY, {}
+            legal_actions = list(Action.MOTION_ACTIONS)
+            # Pick a random action from the legal actions
+            random_action = random.choice(legal_actions)
+            return random_action, {}
         action = self.path.pop(0)
         return action, {}
 

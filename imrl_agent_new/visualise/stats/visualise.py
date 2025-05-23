@@ -16,7 +16,7 @@ def load_records(path):
 
 # ------------------ smoothing helpers ------------------------
 
-def moving_average(values, window_size=10):
+def moving_average(values, window_size=1):
     """Simple moving average. Keeps line smooth."""
     if len(values) < window_size:
         return values
@@ -25,7 +25,7 @@ def moving_average(values, window_size=10):
 
 # ------------------ plot function ----------------------------
 
-def plot_fitness(records, output_path, smoothing_window=10):
+def plot_fitness(records, output_path, smoothing_window=1):
     """
     Line plot of fitness over time, one line per goal space.
     Applies moving average smoothing.

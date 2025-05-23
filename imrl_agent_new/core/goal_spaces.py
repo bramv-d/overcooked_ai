@@ -59,7 +59,9 @@ def make_pick_object_space(length_of_trajectory: int) -> GoalSpace:
 
     def success(player, g):
         held = item_to_int(player.get_object()) if player.has_object() else 0
-        return held == int(g[0])
+        if held == int(g[0]):
+            return True
+        return None
 
     def pick_encode(g):
         """

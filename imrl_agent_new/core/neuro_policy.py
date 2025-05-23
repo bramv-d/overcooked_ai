@@ -14,7 +14,7 @@ class NeuroPolicy:
                  goal_enc_dim: int = 0,
                  num_tokens: int = 9,
                  hidden_dim: int = 64,
-                 sigma_mut: float = 0.05,
+                 sigma_mut: float = 0.01,
                  theta: np.ndarray | None = None):
 
         self.obs_dim = obs_dim

@@ -1,4 +1,5 @@
 # core/population_explorer.py
+import random
 from typing import Any
 
 import numpy as np
@@ -23,21 +24,27 @@ class PopulationExplorer:
         self.mut_std = mut_std
 
     # ----------------------------------------------------------------------
+    # core/population_explorer.py
     def sample_or_mutate(self, goal_vec) -> Any:
-        """
-        Returns a *new instance* of PolicyClass ready for a fresh roll-out.
-        """
         if len(self.kb) == 0:
-            # 1) brand-new random controller
-            return self.PolicyClass(obs_dim=self.obs_dim, goal_enc_dim=self.goal_dim)
+            return self.PolicyClass(self.obs_dim, self.goal_dim)  # brand-new random
 
-        # 2) choose parent θ
-        parent_theta = self._nearest_theta()  # 1-NN in outcome space
-        # small Gaussian mutation in parameter space
-        child_theta = parent_theta + np.random.normal(0, self.mut_std, parent_theta.shape)
-        return self.PolicyClass(obs_dim=self.obs_dim,
-                                goal_enc_dim=self.goal_dim,
-                                theta=child_theta)
+        # 1) choose parent **by fitness**
+        parent_theta = self._fittest_theta()
+
+        # 2) 10 % chance: evaluate the parent unchanged  (elitism)
+        if random.random() < 0.10:
+            return self.PolicyClass(self.obs_dim, self.goal_dim, theta=parent_theta)
+
+        # 3) otherwise mutate with smaller σ if parent is good
+        best_fit = max(r.fitness for r in self.kb.buffer)
+        sigma = 0.02 if best_fit > 0 else 0.05
+        child_theta = parent_theta + np.random.normal(0, sigma, parent_theta.shape)
+        return self.PolicyClass(self.obs_dim, self.goal_dim, theta=child_theta)
+
+    def _fittest_theta(self):
+        idx = np.argmax([r.fitness for r in self.kb.buffer])
+        return self.kb.buffer[idx].theta
 
     # ----------------------------------------------------------------------
     def _nearest_theta(self):
