@@ -5,9 +5,6 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 
-from imrl_agent_new.VARIABLES import base_dir
-
-DEFAULT_PKL_PATH = "../../kb/buffer_rollouts.pkl"
 DEFAULT_IMG_PATH = "fitness_plot.png"
 
 
@@ -61,14 +58,12 @@ def plot_fitness(records, output_path, smoothing_window=10):
 
 
 # ------------------ load & run -------------------------------
-
-if __name__ == "__main__":
-
+def make_graphs():
     for ag in range(2):
-        path = base_dir + f"/kb/buffer_rollouts{ag}.pkl"
+        path = f"kb/buffer_rollouts{ag}.pkl"
         if os.path.exists(path):
             print(f"✅ Found {path}")
             records = load_records(path)
-            plot_fitness(records, f"fitness_plot_{ag}.png")
+            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png")
         else:
             print(f"❌ Could not find {path}")

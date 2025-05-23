@@ -1,31 +1,43 @@
 import copy
 
 from imrl_agent_new.VARIABLES import HORIZON
+from imrl_agent_new.helper.create_gif import create_gif
 from imrl_agent_new.helper.max_plan_cost import max_plan_cost
 from imrl_agent_new.overcooked.agent import IMGEPAgent
+from imrl_agent_new.visualise.stats.visualise import make_graphs
 from overcooked_ai_py.data.layouts.layouts import layouts
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
-from overcooked_ai_py.planning.planners import MotionPlanner
+from overcooked_ai_py.planning.planners import MediumLevelActionManager, MotionPlanner
 
 # ---------------------------------------------------------------- settings
 layout_name       = layouts[20]          # any layout string
 
 # ---------------------------------------------------------------- env + agents
-mdp = OvercookedGridworld.from_layout_name(layout_name)
-env = OvercookedEnv.from_mdp(mdp, horizon=HORIZON)
+mdp: OvercookedGridworld = OvercookedGridworld.from_layout_name(layout_name)
+env: OvercookedEnv = OvercookedEnv.from_mdp(mdp, horizon=HORIZON)
 
 counter = mdp.get_counter_locations()
 mp = MotionPlanner(mdp, counter)
 
 max_dist = max_plan_cost(mp)  # longest path in the layout, used for normalization
+# ---------- motion-planner helper (optional) ----------------------
+base_params = {
+    "start_orientations": False,
+    "wait_allowed": False,
+    "counter_goals": [],  # mdp.terrain_pos_dict["X"],
+    "counter_drop": [],  # mdp.terrain_pos_dict["X"],
+    "counter_pickup": [],  # mdp.terrain_pos_dict["X"],
+    "same_motion_goals": True,
+}
+mlam = MediumLevelActionManager(mdp, base_params)
 
-agents = [IMGEPAgent(mdp, agent_id, horizon=HORIZON, mp=mp, max_dist=max_dist) for agent_id in range(2)]
-for ag in agents: ag.kb.load_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
+agents = [IMGEPAgent(mlam, mdp, agent_id, horizon=HORIZON, mp=mp, max_dist=max_dist) for agent_id in range(2)]
+# for ag in agents: ag.kb.load_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
 # ---------------------------------------------------------------- run one roll-out
 state = env.reset()
 
-ROLL_OUTS = 1000
+ROLL_OUTS = 1
 scores, dishes, fitnesses, r_is = [], [], [], []
 
 stats_log = []
@@ -49,27 +61,11 @@ for roll in range(ROLL_OUTS):
     for ag in agents:
         ag.finish_rollout(state, 0)
 
-    s0 = agents[0].rollout_stats
-    stats_log.append(s0)
-
-    # if roll == ROLL_OUTS - 1:
-    #     create_gif(ep_states, mdp, roll, True, base_dir)
+    if roll == ROLL_OUTS - 1:
+        create_gif(ep_states, mdp, roll, True)
 
 for ag in agents: ag.kb.save_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
 
 # ------------ summary -------------
-import numpy as np, collections as C
 
-# scores   = np.array([s.score     for s in stats_log])
-dishes   = np.array([s.dishes    for s in stats_log])
-fit      = np.array([s.fitness   for s in stats_log])
-intr     = np.array([s.intrinsic for s in stats_log])
-by_goal  = C.Counter([s.goal_space for s in stats_log])
-
-print("\n=== Chef-0 summary ===")
-# print("avg score   :", scores.mean())
-print("avg dishes  :", dishes.mean())
-print("avg fitness :", fit.mean())
-print("avg LP      :", intr.mean())
-print("roll-outs per space:", dict(by_goal))
-
+make_graphs()
