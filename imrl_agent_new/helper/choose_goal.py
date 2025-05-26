@@ -17,7 +17,13 @@ def get_plan(start_pos_and_or, motion_goals, mlam: MediumLevelActionManager):
         action_plan, _, plan_cost = mlam.motion_planner.get_plan(
             start_pos_and_or, goal
         )
+        if not action_plan:
+            print(f"No action plan found for goal: {goal}")
+
+        if not action_plan and plan_cost is not None:
+            print('Action plan:', action_plan, 'Cost:', plan_cost)
+
         if plan_cost < min_cost:
             best_plan = action_plan
             min_cost = plan_cost
-    return best_plan
+    return best_plan.copy()

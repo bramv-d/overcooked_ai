@@ -18,8 +18,9 @@ from imrl_agent_new.helper.obs_to_vect import obs_to_vec
 from imrl_agent_new.overcooked.outcome import extract_outcome
 from overcooked_ai_py.agents.agent import Agent
 from overcooked_ai_py.mdp.actions import Action
+from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState
-from overcooked_ai_py.planning.planners import MediumLevelActionManager, MotionPlanner
+from overcooked_ai_py.planning.planners import MotionPlanner
 
 G_ENC = 3  # padded goal-encoding length
 
@@ -48,23 +49,23 @@ class IMGEPAgent(Agent):
 
     def __init__(
             self,
-            mlam: MediumLevelActionManager,
-            grid_world: OvercookedGridworld,
+            env: OvercookedEnv,
+            mdp: OvercookedGridworld,
             agent_id: int,
             horizon: int = 400,
             epsilon: float = 1.0,
-            mp: MotionPlanner | None = None,
             max_dist: int = 0,
     ):
         # ---------- env refs ----------------------------------------------
         self.agent_id = agent_id
-        self.mdp = grid_world
+        self.env: OvercookedEnv = env
+        self.mdp: OvercookedGridworld = mdp
         self.horizon = horizon
-        self.mp = mp
+        self.mp: MotionPlanner = env.mp
         self.max_dist = max_dist
-        self.mlam = mlam
+        self.mlam = env.mlam
         # ---------- IMGEP machinery --------------------------------------
-        self.G = create_goal_space(grid_world, horizon)
+        self.G = create_goal_space(env, horizon)
         self.bandit = GoalSpacePolicy(self.G, epsilon=epsilon)
 
         self.kb = KnowledgeBase(context_dim=1, outcome_dim=5)
@@ -87,19 +88,20 @@ class IMGEPAgent(Agent):
         super().__init__()
 
     # ---------------------------------------------------------------- reset
-    def reset(self):
+    def reset(self, mdp: OvercookedGridworld | None = None):
         """Called by Overcooked-AI at episode start."""
+        super().reset()
+        self.mdp = mdp
         self.goal_space_id, self.goal_vec = self.bandit.next_goal(None)
         self.goal_reach_time_step = None
         self.t = 0
-        self.meta = {"reach_step": None, "pick_step": None, "fill_step": None}
-
+        self.meta = {"reach_step": None, "pick_step": None, "fill_step": None, "bad_token": 0}
+        self.path = []
         # 20 % exploitation, 80 % exploration
         self.use_pi = (random.random() > 0.5) and (len(self.kb) > 0)
 
         # if len(self.kb) > 0:
         #     self.use_pi = True # --- exploit: clone best policy ----
-
         if self.use_pi:  # --- exploit: clone best policy ----
             best_idx = np.argmax([r.fitness for r in self.kb.buffer])
             theta_vec = self.kb.buffer[best_idx].theta
@@ -113,9 +115,9 @@ class IMGEPAgent(Agent):
     def action(self, state: OvercookedState):
         # optional success time-step logging
         self.t += 1
-        gs = self.G[self.goal_space_id]
-        if gs.success(state.players[self.agent_id], self.goal_vec) and self.goal_reach_time_step is None:
-            self.goal_reach_time_step = self.t
+        # gs = self.G[self.goal_space_id]
+        # if gs.success(state.players[self.agent_id], self.goal_vec) and self.goal_reach_time_step is None:
+        #     self.goal_reach_time_step = self.t
 
         if self.path:
             step = self.path.pop(0)
@@ -127,11 +129,13 @@ class IMGEPAgent(Agent):
 
         # ---------------- legality mask & token selection ------------------
         token = HighLevelActions(
-            self.theta.select_token(obs_vec, goal_enc, greedy=True))
+            self.theta.select_token(obs_vec, goal_enc, greedy=False))
 
         # ----------------- path planning ----------------------------------
         motion_goals = self._get_motion_goals(token, state)
         self.path = get_plan(state.players[self.agent_id].pos_and_or, motion_goals, self.mlam)
+        if not motion_goals and not self.goal_reach_time_step:
+            self.meta["bad_token"] = token
 
         if not self.path:
             legal_actions = list(Action.MOTION_ACTIONS)
@@ -150,7 +154,6 @@ class IMGEPAgent(Agent):
         gs = self.G[self.goal_space_id]
         fitness = gs.fitness(outcome, self.goal_vec,
                              pick_step=self.goal_reach_time_step)
-
         # intrinsic reward = Δ fitness vs nearest prior experiment
         if len(self.kb) == 0:
             prev_f = 0.0

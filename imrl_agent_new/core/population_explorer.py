@@ -1,8 +1,10 @@
 # core/population_explorer.py
 import random
-from typing import Any
+from typing import Any, Type
 
 import numpy as np
+
+from imrl_agent_new.core.neuro_policy import NeuroPolicy
 
 
 class PopulationExplorer:
@@ -15,7 +17,7 @@ class PopulationExplorer:
         • clone & mutate it
     """
 
-    def __init__(self, kb, PolicyClass, obs_dim: int, goal_enc_dim: int = 3,
+    def __init__(self, kb, PolicyClass: Type[NeuroPolicy], obs_dim: int, goal_enc_dim: int = 3,
                  mut_std: float = 0.05):
         self.kb = kb
         self.PolicyClass = PolicyClass  # e.g. NeuroPolicy

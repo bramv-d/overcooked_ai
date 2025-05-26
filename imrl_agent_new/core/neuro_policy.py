@@ -1,4 +1,6 @@
 # neuro_policy.py
+import random
+
 import numpy as np
 
 
@@ -48,10 +50,16 @@ class NeuroPolicy:
         z = h @ W2 + b2  # logits  (num_tokens,)
 
         if greedy:
+            if random.random() < 0.01:  # print ~1 % of the steps
+                print(f"z = {np.round(z, 2)}, "
+                      f"max idx = {np.argmax(z)}, ")
             return int(np.argmax(z))
         else:
             p = np.exp(z - z.max(), dtype=np.float32)
             p /= p.sum()
+            if random.random() < 0.01:  # print ~1 % of the steps
+                print(f"z = {np.round(z, 2)}, "
+                      f"max idx = {np.argmax(z)}, ")
             return int(np.random.choice(self.num_tokens, p=p))
 
     def mutate(self) -> "NeuroPolicy":
