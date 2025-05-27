@@ -33,5 +33,5 @@ class PopulationExplorer:
         # 1) Get the previous policy θ
         parent_theta = self.kb.buffer[-1].theta.copy()
 
-        child_theta = parent_theta + np.random.normal(0, 0.01, parent_theta.shape)
+        child_theta = parent_theta + np.random.normal(0, 0.05, parent_theta.shape)
         return self.PolicyClass(self.obs_dim, self.goal_dim, theta=child_theta)

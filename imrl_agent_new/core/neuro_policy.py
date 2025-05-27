@@ -25,7 +25,7 @@ class NeuroPolicy:
         self.num_tokens = num_tokens
         self.sigma_mut = sigma_mut
 
-        if theta is None:  # fresh initialisation
+        if theta is None:  # fresh initialization
             W1 = he_init(self.inp_dim, hidden_dim)
             b1 = np.zeros(hidden_dim, dtype=np.float32)
             W2 = he_init(hidden_dim, num_tokens)
@@ -75,11 +75,11 @@ class NeuroPolicy:
         """Recover weight matrices from flat θ."""
         D, H, A = self.inp_dim, self.hidden_dim, self.num_tokens
         i = 0
-        W1 = self.theta[i:i + D * H].reshape(D, H);
+        W1 = self.theta[i:i + D * H].reshape(D, H)
         i += D * H
-        b1 = self.theta[i:i + H];
+        b1 = self.theta[i:i + H]
         i += H
-        W2 = self.theta[i:i + H * A].reshape(H, A);
+        W2 = self.theta[i:i + H * A].reshape(H, A)
         i += H * A
         b2 = self.theta[i:i + A]
         return W1, b1, W2, b2

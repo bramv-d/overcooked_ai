@@ -17,6 +17,7 @@ class ExperimentRecord:
     goal:     np.ndarray                 # shape = (G,), the goal to reach using the policy
     theta:    np.ndarray                 # policy params you executed
     outcome:  np.ndarray                 # shape = (O,)  derived from τ, the outcome of the performed policy
+    learning_progress: float  # how much the policy improved (if applicable)
     fitness:  float
     intrinsic_reward: float
 

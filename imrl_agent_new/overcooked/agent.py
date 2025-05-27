@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 import numpy as np
 
 from imrl_agent_new.core.goal_policy import GoalSpacePolicy
-from imrl_agent_new.core.goal_spaces import create_goal_space
+from imrl_agent_new.core.goal_spaces import GoalSpace, create_goal_space
 from imrl_agent_new.core.knowledge_base import ExperimentRecord, KnowledgeBase
 from imrl_agent_new.core.neuro_policy import NeuroPolicy
 from imrl_agent_new.core.population_explorer import PopulationExplorer
@@ -97,7 +97,7 @@ class IMGEPAgent(Agent):
         self.meta = {"reach_step": None, "pick_step": None, "fill_step": None, "bad_token": 0}
         self.path = []
         # 20 % exploitation, 80 % exploration
-        self.use_pi = (random.random() > 0.3) and (len(self.kb) > 0)
+        self.use_pi = (random.random() > 0.2) and (len(self.kb) > 0)
 
         if self.use_pi:  # --- exploit: clone best policy ----
             best_idx = np.argmax([r.fitness for r in self.kb.buffer])
@@ -118,6 +118,7 @@ class IMGEPAgent(Agent):
         gs = self.G[self.goal_space_id]
         if gs.success(state.players[self.agent_id], self.goal_vec) and self.goal_reach_time_step is None:
             self.goal_reach_time_step = self.t
+            return Action.STAY, {}
 
         if self.path:
             step = self.path.pop(0)
@@ -128,7 +129,7 @@ class IMGEPAgent(Agent):
         goal_enc = pad_goal(self.G[self.goal_space_id].encode(self.goal_vec))
 
         token = HighLevelActions(
-            self.theta.select_token(obs_vec, goal_enc, greedy=False))
+            self.theta.select_token(obs_vec, goal_enc, greedy=True))
 
         # ----------------- path planning ----------------------------------
         motion_goals = self._get_motion_goals(token, state)
@@ -150,7 +151,7 @@ class IMGEPAgent(Agent):
                                   final_state.players[self.agent_id],
                                   self.mdp, soups_delivered)
 
-        gs = self.G[self.goal_space_id]
+        gs: GoalSpace = self.G[self.goal_space_id]
         fitness = gs.fitness(outcome, self.goal_vec,
                              pick_step=self.goal_reach_time_step)
         # intrinsic reward = Δ fitness vs nearest prior experiment
@@ -167,7 +168,8 @@ class IMGEPAgent(Agent):
             theta=self.theta.theta,  # store network parameters
             outcome=outcome,
             fitness=fitness,
-            intrinsic_reward=r_i
+            intrinsic_reward=r_i,
+            learning_progress=self.bandit.avg_lp[self.goal_space_id],
         ))
 
         if self.use_pi:

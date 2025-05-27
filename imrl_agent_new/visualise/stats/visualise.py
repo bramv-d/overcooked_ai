@@ -25,33 +25,54 @@ def moving_average(values, window_size):
 
 # ------------------ plot function ----------------------------
 
-def plot_fitness(records, output_path, smoothing_window):
+def plot_fitness(records, output_path, smoothing_window=5):
     """
-    Line plot of fitness over time, one line per goal space.
-    Applies moving average smoothing.
+    Line plot of FITNESS and LEARNING-PROGRESS over time, one line per goal space.
+    Fitness  → solid line (left y-axis)
+    LP       → dashed line (right y-axis)
     """
     fitness_by_space = defaultdict(list)
+    lp_by_space = defaultdict(list)
 
     for rec in records:
         key = getattr(rec, "goal_space", str(tuple(rec.goal)))
         fitness_by_space[key].append(rec.fitness)
+        lp_by_space[key].append(rec.learning_progress)
 
     if not fitness_by_space:
         print("❌ No fitness data found.")
         return
 
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(11, 6))
 
-    for goal_space, fitness_vals in fitness_by_space.items():
-        smoothed = moving_average(fitness_vals, smoothing_window)
-        x_vals = list(range(len(smoothed)))
-        plt.plot(x_vals, smoothed, label=goal_space)
+    ax_f = plt.gca()  # left axis  (fitness)
+    ax_lp = ax_f.twinx()  # right axis (learning progress)
 
-    plt.xlabel("Roll-out index")
-    plt.ylabel("Fitness (smoothed)")
-    plt.title("Fitness per goal space over time")
-    plt.legend()
-    plt.grid(True)
+    colors = plt.cm.tab10.colors  # up to 10 distinct colours
+
+    for idx, goal_space in enumerate(fitness_by_space):
+        # ----- fitness (solid) -----
+        fit_vals = moving_average(fitness_by_space[goal_space], smoothing_window)
+        x = range(len(fit_vals))
+        ax_f.plot(x, fit_vals, color=colors[idx % 10], label=f"{goal_space} fitness")
+
+        lp_vals = moving_average(lp_by_space[goal_space], smoothing_window)
+        ax_lp.plot(x, lp_vals, color=colors[idx % 10], linestyle="--",
+                   label=f"{goal_space} LP")
+
+    # ----- axis cosmetics -----
+    ax_f.set_xlabel("Roll-out index")
+    ax_f.set_ylabel("Fitness (smoothed)")
+    ax_lp.set_ylabel("Learning progress (smoothed)")
+    ax_f.set_ylim(0, 1.05)  # fitness is in [0, 1]
+    ax_f.set_title("Fitness & Learning-Progress per goal space")
+    ax_f.grid(True, which="both", linestyle=":")
+
+    # combine legends from both axes
+    lines, labels = ax_f.get_legend_handles_labels()
+    lines2, labels2 = ax_lp.get_legend_handles_labels()
+    ax_f.legend(lines + lines2, labels + labels2, loc="upper left", fontsize=9)
+
     plt.tight_layout()
     plt.savefig(output_path)
     print(f"✅ Saved line plot to {output_path}")
