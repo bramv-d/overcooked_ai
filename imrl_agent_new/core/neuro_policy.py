@@ -1,5 +1,4 @@
 # neuro_policy.py
-import random
 
 import numpy as np
 
@@ -16,7 +15,7 @@ class NeuroPolicy:
                  goal_enc_dim: int = 0,
                  num_tokens: int = 9,
                  hidden_dim: int = 64,
-                 sigma_mut: float = 0.01,
+                 sigma_mut: float = 0.025,
                  theta: np.ndarray | None = None):
 
         self.obs_dim = obs_dim
@@ -50,16 +49,11 @@ class NeuroPolicy:
         z = h @ W2 + b2  # logits  (num_tokens,)
 
         if greedy:
-            if random.random() < 0.01:  # print ~1 % of the steps
-                print(f"z = {np.round(z, 2)}, "
-                      f"max idx = {np.argmax(z)}, ")
             return int(np.argmax(z))
         else:
             p = np.exp(z - z.max(), dtype=np.float32)
             p /= p.sum()
-            if random.random() < 0.01:  # print ~1 % of the steps
-                print(f"z = {np.round(z, 2)}, "
-                      f"max idx = {np.argmax(z)}, ")
+
             return int(np.random.choice(self.num_tokens, p=p))
 
     def mutate(self) -> "NeuroPolicy":

@@ -16,7 +16,7 @@ def load_records(path):
 
 # ------------------ smoothing helpers ------------------------
 
-def moving_average(values, window_size=1):
+def moving_average(values, window_size):
     """Simple moving average. Keeps line smooth."""
     if len(values) < window_size:
         return values
@@ -25,7 +25,7 @@ def moving_average(values, window_size=1):
 
 # ------------------ plot function ----------------------------
 
-def plot_fitness(records, output_path, smoothing_window=1):
+def plot_fitness(records, output_path, smoothing_window):
     """
     Line plot of fitness over time, one line per goal space.
     Applies moving average smoothing.
@@ -64,6 +64,6 @@ def make_graphs():
         if os.path.exists(path):
             print(f"✅ Found {path}")
             records = load_records(path)
-            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png")
+            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 150)
         else:
             print(f"❌ Could not find {path}")

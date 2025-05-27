@@ -36,12 +36,13 @@ agents = [IMGEPAgent(env, mdp, agent_id, horizon=HORIZON, max_dist=max_dist) for
 # ---------------------------------------------------------------- run one roll-out
 state = env.reset()
 
-ROLL_OUTS = 1000
+ROLL_OUTS = 5000
 scores, dishes, fitnesses, r_is = [], [], [], []
 
 stats_log = []
 
 for roll in range(ROLL_OUTS):
+    print(roll)
     env.reset(regen_mdp=True)
     for ag in agents: ag.reset(mdp)
 
@@ -63,7 +64,4 @@ for roll in range(ROLL_OUTS):
         create_gif(ep_states, mdp, roll, True)
 
 for ag in agents: ag.kb.save_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
-
-# ------------ summary -------------
-
 make_graphs()

@@ -1,5 +1,4 @@
 # core/population_explorer.py
-import random
 from typing import Any, Type
 
 import numpy as np
@@ -31,29 +30,8 @@ class PopulationExplorer:
         if len(self.kb) == 0:
             return self.PolicyClass(self.obs_dim, self.goal_dim)  # brand-new random
 
-        # 1) choose parent **by fitness**
-        parent_theta = self._fittest_theta()
+        # 1) Get the previous policy θ
+        parent_theta = self.kb.buffer[-1].theta.copy()
 
-        # 2) 10 % chance: evaluate the parent unchanged  (elitism)
-        if random.random() < 0.10:
-            return self.PolicyClass(self.obs_dim, self.goal_dim, theta=parent_theta)
-
-        # 3) otherwise mutate with smaller σ if parent is good
-        best_fit = max(r.fitness for r in self.kb.buffer)
-        sigma = 0.02 if best_fit > 0 else 0.05
-        child_theta = parent_theta + np.random.normal(0, sigma, parent_theta.shape)
+        child_theta = parent_theta + np.random.normal(0, 0.01, parent_theta.shape)
         return self.PolicyClass(self.obs_dim, self.goal_dim, theta=child_theta)
-
-    def _fittest_theta(self):
-        idx = np.argmax([r.fitness for r in self.kb.buffer])
-        return self.kb.buffer[idx].theta
-
-    # ----------------------------------------------------------------------
-    def _nearest_theta(self):
-        """
-        Finds the experiment record whose outcome vector is closest
-        to *any* dummy query (context ignored → [0]).
-        """
-        dummy_out = np.zeros(self.kb.buffer[0].outcome.shape)
-        idx, _ = self.kb.nearest(np.array([0]), dummy_out)
-        return self.kb.buffer[idx].theta

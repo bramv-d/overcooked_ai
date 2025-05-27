@@ -12,16 +12,11 @@ def get_plan(start_pos_and_or, motion_goals, mlam: MediumLevelActionManager):
     best_plan = []
     for goal in motion_goals:
         if not mlam.motion_planner.is_valid_motion_goal(goal):
-            print(f"Invalid motion goal: {goal}")
             continue
+
         action_plan, _, plan_cost = mlam.motion_planner.get_plan(
             start_pos_and_or, goal
         )
-        if not action_plan:
-            print(f"No action plan found for goal: {goal}")
-
-        if not action_plan and plan_cost is not None:
-            print('Action plan:', action_plan, 'Cost:', plan_cost)
 
         if plan_cost < min_cost:
             best_plan = action_plan
