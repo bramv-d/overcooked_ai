@@ -15,11 +15,12 @@ class ExperimentRecord:
     # High-level information
     context:  np.ndarray                 # shape = (C,), holds the context in which the policy was used
     goal:     np.ndarray                 # shape = (G,), the goal to reach using the policy
+    goal_space: str  # goal space ID, e.g. "NAV", "PICK_OBJECT", etc.q
     theta:    np.ndarray                 # policy params you executed
     outcome:  np.ndarray                 # shape = (O,)  derived from τ, the outcome of the performed policy
-    learning_progress: float  # how much the policy improved (if applicable)
     fitness:  float
     intrinsic_reward: float
+    exploit: bool = False  # True if this was an exploit step, False if it was exploration
 
     # Optional extras (kept for replay / analysis)
     trajectory: List[Tuple[np.ndarray, np.ndarray]] = field(default_factory=list)

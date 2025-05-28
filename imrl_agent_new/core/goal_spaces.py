@@ -6,12 +6,11 @@ from imrl_agent_new.overcooked.outcome import ItemCode, item_to_int
 
 
 class GoalSpace:
-    def __init__(self, name, dim, sampler, encode_fn, fitness_fn, success_fn=None):
+    def __init__(self, name, dim, sampler, fitness_fn, success_fn=None):
         self.name    = name
         self.dim     = dim
         self.sample  = sampler
         self.fitness = fitness_fn
-        self.encode = encode_fn
         # if None, the space never triggers early stop
         self.success = success_fn or (lambda obs, g: False)
 
@@ -63,14 +62,7 @@ def make_pick_object_space(length_of_trajectory: int) -> GoalSpace:
             return True
         return None
 
-    def pick_encode(g):
-        """
-        Encode item goal as single scalar ∈[0,1].
-        g = [item_code]  (0 .. MAX_ITEM_CODE)
-        """
-        return np.array([int(g[0]) / len(PICKABLE_OBJECTS)], dtype=np.float32)  # length-1
-
-    return GoalSpace("PICK_OBJECT", 1, sampler=sampler, fitness_fn=fitness, success_fn=success, encode_fn=pick_encode)
+    return GoalSpace("PICK_OBJECT", 1, sampler=sampler, fitness_fn=fitness, success_fn=success)
 
 
 # def make_pot_filled_space(

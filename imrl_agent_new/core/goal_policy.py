@@ -1,7 +1,7 @@
 # goal_policy.py
 import random
 from collections import defaultdict
-from typing import Dict, Tuple, Any
+from typing import Any, Dict, Tuple
 
 
 class GoalSpacePolicy:
@@ -37,8 +37,6 @@ class GoalSpacePolicy:
         """
         Returns (space_id, goal_vector g).
 
-        `context` kept for future use (e.g. context-dependent priors) but
-        ignored in this simple implementation.
         """
         # ---------- choose a space -----------------------------------------
         if random.random() < self.epsilon:

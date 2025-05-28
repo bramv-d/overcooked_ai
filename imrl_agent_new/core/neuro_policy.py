@@ -12,15 +12,13 @@ def he_init(fan_in: int, fan_out: int) -> np.ndarray:
 class NeuroPolicy:
     def __init__(self,
                  obs_dim: int,
-                 goal_enc_dim: int = 0,
                  num_tokens: int = 9,
                  hidden_dim: int = 64,
                  sigma_mut: float = 0.025,
                  theta: np.ndarray | None = None):
 
         self.obs_dim = obs_dim
-        self.goal_dim = goal_enc_dim
-        self.inp_dim = obs_dim + goal_enc_dim
+        self.inp_dim = obs_dim
         self.hidden_dim = hidden_dim
         self.num_tokens = num_tokens
         self.sigma_mut = sigma_mut
@@ -37,12 +35,9 @@ class NeuroPolicy:
     # ──────────────────────────── public ──────────────────────────────
     def select_token(self,
                      obs_vec: np.ndarray,
-                     goal_enc: np.ndarray | None = None,
                      greedy: bool = True) -> int:
-        if goal_enc is None:
-            goal_enc = np.empty(0, dtype=np.float32)
 
-        x = np.concatenate([obs_vec, goal_enc]).astype(np.float32)
+        x = np.concatenate([obs_vec]).astype(np.float32)
 
         W1, b1, W2, b2 = self._unpack()
         h = np.maximum(0.0, x @ W1 + b1)  # ReLU
@@ -55,17 +50,6 @@ class NeuroPolicy:
             p /= p.sum()
 
             return int(np.random.choice(self.num_tokens, p=p))
-
-    def mutate(self) -> "NeuroPolicy":
-        """Return *new* policy with θ ← θ + 𝒩(0, σ²)."""
-        new_theta = self.theta + np.random.normal(
-            0.0, self.sigma_mut, size=self.theta.shape).astype(np.float32)
-        return NeuroPolicy(self.obs_dim,
-                           goal_enc_dim=self.goal_dim,
-                           num_tokens=self.num_tokens,
-                           hidden_dim=self.hidden_dim,
-                           sigma_mut=self.sigma_mut,
-                           theta=new_theta)
 
     # ────────────────────────── helpers ───────────────────────────────
     def _pack(self, W1, b1, W2, b2) -> np.ndarray:

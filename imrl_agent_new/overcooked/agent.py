@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import numpy as np
 
@@ -21,24 +20,6 @@ from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState
 from overcooked_ai_py.planning.planners import MotionPlanner
-
-G_ENC = 3  # padded goal-encoding length
-
-
-@dataclass
-class RolloutStats:
-    goal_space: str
-    goal_vec: List[int]
-    dishes: int
-    fitness: float
-    intrinsic: float
-    steps: int
-
-
-def pad_goal(enc: np.ndarray, length: int = G_ENC) -> np.ndarray:
-    out = np.zeros(length, np.float32)
-    out[:len(enc)] = enc
-    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -71,15 +52,14 @@ class IMGEPAgent(Agent):
         self.kb = KnowledgeBase(context_dim=1, outcome_dim=5)
         self.obs_dim = 14  # from obs_to_vec()
         self.explorer = PopulationExplorer(self.kb, NeuroPolicy,
-                                           self.obs_dim,  # ← unchanged
-                                           G_ENC)
+                                           self.obs_dim)
         # ---------- per-rollout fields -----------------------------------
         self.goal_space_id: str | None = None
-        self.goal_vec     : np.ndarray | None = None
+        self.goal_vec: np.ndarray | None = None
         self.theta: NeuroPolicy | None = None
         self.use_pi: bool = False
         self.t: int = 0
-        self.meta         : Dict[str, Any] = {}
+        self.meta: Dict[str, Any] = {}
         self.goal_reach_time_step = None
 
         # ---------- path planning --------------------------------------
@@ -97,16 +77,22 @@ class IMGEPAgent(Agent):
         self.meta = {"reach_step": None, "pick_step": None, "fill_step": None, "bad_token": 0}
         self.path = []
         # 20 % exploitation, 80 % exploration
-        self.use_pi = (random.random() > 0.2) and (len(self.kb) > 0)
+        self.use_pi = (random.random() > 0.8) and (len(self.kb) > 0)
+        # Get all policies from the knowledge base with goal space ID self.goal_space_id and goal_vec self.goal_vec
+        neuro_policies = []
+        for policy in self.kb.buffer:  # limit to the last 50 policies
+            if policy.goal_space == self.goal_space_id and np.array_equal(policy.goal, self.goal_vec):
+                neuro_policies.append(policy)
+            if len(neuro_policies) >= 50:
+                break
 
-        if self.use_pi:  # --- exploit: clone best policy ----
-            best_idx = np.argmax([r.fitness for r in self.kb.buffer])
+        if self.use_pi and neuro_policies:  # --- exploit: clone best policy ----
+            best_idx = np.argmax([r.fitness for r in neuro_policies])
             theta_vec = self.kb.buffer[best_idx].theta
             self.theta = NeuroPolicy(obs_dim=self.obs_dim,
-                                     goal_enc_dim=G_ENC,
                                      theta=theta_vec)
         else:  # --- explore: new / mutated policy --
-            self.theta = self.explorer.sample_or_mutate(self.goal_vec)
+            self.theta = self.explorer.sample_or_mutate(neuro_policies)
 
     # ---------------------------------------------------------------- action
     def action(self, state: OvercookedState):
@@ -126,16 +112,13 @@ class IMGEPAgent(Agent):
 
         obs_vec = obs_to_vec(state, self.mdp, self.mp,
                              self.agent_id, self.max_dist)
-        goal_enc = pad_goal(self.G[self.goal_space_id].encode(self.goal_vec))
 
         token = HighLevelActions(
-            self.theta.select_token(obs_vec, goal_enc, greedy=True))
+            self.theta.select_token(obs_vec, greedy=True))
 
         # ----------------- path planning ----------------------------------
         motion_goals = self._get_motion_goals(token, state)
         self.path = get_plan(state.players[self.agent_id].pos_and_or, motion_goals, self.mlam)
-        if not motion_goals and not self.goal_reach_time_step:
-            self.meta["bad_token"] = token
 
         if not self.path:
             legal_actions = list(Action.MOTION_ACTIONS)
@@ -165,11 +148,12 @@ class IMGEPAgent(Agent):
         self.kb.add_record(ExperimentRecord(
             context=np.array([0]),
             goal=self.goal_vec,
+            goal_space=self.goal_space_id,
             theta=self.theta.theta,  # store network parameters
             outcome=outcome,
             fitness=fitness,
             intrinsic_reward=r_i,
-            learning_progress=self.bandit.avg_lp[self.goal_space_id],
+            exploit=self.use_pi,
         ))
 
         if self.use_pi:
