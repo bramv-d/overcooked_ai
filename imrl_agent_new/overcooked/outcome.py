@@ -1,13 +1,10 @@
 # outcome.py
-import string
 
+# outcome.py
 import numpy as np
 
 from overcooked_ai_py.mdp.overcooked_mdp import ObjectState, OvercookedGridworld, OvercookedState, PlayerState
 
-
-# outcome.py
-import numpy as np
 
 def extract_outcome(
     state: OvercookedState,
@@ -41,7 +38,7 @@ class ItemCode(IntEnum):
     NOTHING   = 0
     ONION     = 1
     TOMATO    = 2
-    BOWL      = 3
+    DISH = 3
     SOUP      = 4
 
 # ---------- helpers ----------------------------------------------------------

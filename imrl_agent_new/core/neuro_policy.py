@@ -10,24 +10,18 @@ def he_init(fan_in: int, fan_out: int) -> np.ndarray:
 
 
 class NeuroPolicy:
-    def __init__(self,
-                 obs_dim: int,
-                 num_tokens: int = 9,
-                 hidden_dim: int = 64,
-                 sigma_mut: float = 0.025,
-                 theta: np.ndarray | None = None):
+    def __init__(self, theta: np.ndarray | None = None):
 
-        self.obs_dim = obs_dim
-        self.inp_dim = obs_dim
-        self.hidden_dim = hidden_dim
-        self.num_tokens = num_tokens
-        self.sigma_mut = sigma_mut
+        self.inp_dim = 14  # from obs_to_vec()
+        self.hidden_dim = 64
+        self.num_tokens = 9
+        self.sigma_mut = 0.025
 
         if theta is None:  # fresh initialization
-            W1 = he_init(self.inp_dim, hidden_dim)
-            b1 = np.zeros(hidden_dim, dtype=np.float32)
-            W2 = he_init(hidden_dim, num_tokens)
-            b2 = np.zeros(num_tokens, dtype=np.float32)
+            W1 = he_init(self.inp_dim, self.hidden_dim)
+            b1 = np.zeros(self.hidden_dim, dtype=np.float32)
+            W2 = he_init(self.hidden_dim, self.num_tokens)
+            b2 = np.zeros(self.num_tokens, dtype=np.float32)
             self.theta = self._pack(W1, b1, W2, b2)
         else:  # copy provided weights
             self.theta = theta.astype(np.float32)
@@ -67,3 +61,13 @@ class NeuroPolicy:
         i += H * A
         b2 = self.theta[i:i + A]
         return W1, b1, W2, b2
+
+
+def mutate_neuro_policy(neuro_policies: list[NeuroPolicy]) -> NeuroPolicy:
+    """Mutate policy weights in-place."""
+
+    # 1) Get the previous policy θ
+    parent_theta = neuro_policies[-1].theta.copy()
+
+    child_theta = parent_theta + np.random.normal(0, 0.05, parent_theta.shape)
+    return NeuroPolicy(child_theta)

@@ -101,7 +101,7 @@ def plot_competence(records, output_path):
     colors = plt.cm.tab10.colors  # up to 10 distinct colours
 
     for idx, goal_space in enumerate(competence_by_space):
-        comp_vals = moving_average(competence_by_space[goal_space], 20)
+        comp_vals = moving_average(competence_by_space[goal_space], 1)
         x = range(len(comp_vals))
         ax.plot(x, comp_vals, color=colors[idx % 10], label=f"{goal_space} competence")
 

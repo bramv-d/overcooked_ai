@@ -9,8 +9,7 @@ import numpy as np
 from imrl_agent_new.core.goal_policy import GoalSpacePolicy
 from imrl_agent_new.core.goal_spaces import GoalSpace, create_goal_space
 from imrl_agent_new.core.knowledge_base import ExperimentRecord, KnowledgeBase
-from imrl_agent_new.core.neuro_policy import NeuroPolicy
-from imrl_agent_new.core.population_explorer import PopulationExplorer
+from imrl_agent_new.core.neuro_policy import NeuroPolicy, mutate_neuro_policy
 from imrl_agent_new.helper.choose_goal import get_plan
 from imrl_agent_new.helper.high_level_actions import HighLevelActions
 from imrl_agent_new.helper.obs_to_vect import obs_to_vec
@@ -19,7 +18,7 @@ from overcooked_ai_py.agents.agent import Agent
 from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState
-from overcooked_ai_py.planning.planners import MotionPlanner
+from overcooked_ai_py.planning.planners import MediumLevelActionManager, MotionPlanner
 
 
 # --------------------------------------------------------------------------- #
@@ -44,19 +43,16 @@ class IMGEPAgent(Agent):
         self.horizon = horizon
         self.mp: MotionPlanner = env.mp
         self.max_dist = max_dist
-        self.mlam = env.mlam
+        self.mlam: MediumLevelActionManager = env.mlam
         # ---------- IMGEP machinery --------------------------------------
         self.G = create_goal_space(env, horizon)
         self.bandit = GoalSpacePolicy(self.G, epsilon=epsilon)
 
         self.kb = KnowledgeBase(context_dim=1, outcome_dim=5)
-        self.obs_dim = 14  # from obs_to_vec()
-        self.explorer = PopulationExplorer(self.kb, NeuroPolicy,
-                                           self.obs_dim)
         # ---------- per-rollout fields -----------------------------------
         self.goal_space_id: str | None = None
         self.goal_vec: np.ndarray | None = None
-        self.theta: NeuroPolicy | None = None
+        self.neuro_policy: NeuroPolicy | None = None
         self.use_pi: bool = False
         self.t: int = 0
         self.meta: Dict[str, Any] = {}
@@ -76,8 +72,7 @@ class IMGEPAgent(Agent):
         self.t = 0
         self.meta = {"reach_step": None, "pick_step": None, "fill_step": None, "bad_token": 0}
         self.path = []
-        # 20 % exploitation, 80 % exploration
-        self.use_pi = (random.random() > 0.8) and (len(self.kb) > 0)
+
         # Get all policies from the knowledge base with goal space ID self.goal_space_id and goal_vec self.goal_vec
         neuro_policies = []
         for policy in self.kb.buffer:  # limit to the last 50 policies
@@ -86,21 +81,28 @@ class IMGEPAgent(Agent):
             if len(neuro_policies) >= 50:
                 break
 
-        if self.use_pi and neuro_policies:  # --- exploit: clone best policy ----
-            best_idx = np.argmax([r.fitness for r in neuro_policies])
+        best_idx = np.argmax([r.fitness for r in neuro_policies]) if neuro_policies else 0
+        self.use_pi = (random.random() > 0.8)
+        if not neuro_policies:
+            # --- explore: create new policy --
+            self.neuro_policy = NeuroPolicy()
+        elif self.use_pi and neuro_policies:
+            # --- exploit: clone best policy ----
             theta_vec = self.kb.buffer[best_idx].theta
-            self.theta = NeuroPolicy(obs_dim=self.obs_dim,
-                                     theta=theta_vec)
-        else:  # --- explore: new / mutated policy --
-            self.theta = self.explorer.sample_or_mutate(neuro_policies)
+            self.neuro_policy = NeuroPolicy(theta=theta_vec)
+        else:
+            # --- explore:  mutate policy --
+            self.neuro_policy = mutate_neuro_policy(neuro_policies)
 
     # ---------------------------------------------------------------- action
     def action(self, state: OvercookedState):
-        # optional success time-step logging
-        if self.goal_reach_time_step is not None:
-            return Action.STAY, {}
-
         self.t += 1
+        if self.goal_reach_time_step is not None:
+            legal_actions = list(Action.MOTION_ACTIONS)
+            # Pick a random action from the legal actions
+            random_action = random.choice(legal_actions)
+            return random_action, {}
+
         gs = self.G[self.goal_space_id]
         if gs.success(state.players[self.agent_id], self.goal_vec) and self.goal_reach_time_step is None:
             self.goal_reach_time_step = self.t
@@ -114,7 +116,7 @@ class IMGEPAgent(Agent):
                              self.agent_id, self.max_dist)
 
         token = HighLevelActions(
-            self.theta.select_token(obs_vec, greedy=True))
+            self.neuro_policy.select_token(obs_vec, greedy=self.use_pi))
 
         # ----------------- path planning ----------------------------------
         motion_goals = self._get_motion_goals(token, state)
@@ -149,7 +151,7 @@ class IMGEPAgent(Agent):
             context=np.array([0]),
             goal=self.goal_vec,
             goal_space=self.goal_space_id,
-            theta=self.theta.theta,  # store network parameters
+            theta=self.neuro_policy.theta,  # store network parameters
             outcome=outcome,
             fitness=fitness,
             intrinsic_reward=r_i,
