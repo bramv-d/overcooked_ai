@@ -1,7 +1,6 @@
 import random
 
 from imrl_agent_new.overcooked.outcome import ItemCode, item_to_int
-from overcooked_ai_py.mdp.layout_generator import POT
 from overcooked_ai_py.mdp.overcooked_mdp import ObjectState, OvercookedGridworld, OvercookedState, PlayerState
 
 
@@ -62,8 +61,6 @@ def place_object_space(length_of_trajectory: int) -> GoalSpace:
                 previous_held) != g:  # The agent did not hold the correct object or is still holding it
             return None
         # At this point, the agent held the correct object and is not holding it anymore
-        target_location = POT
-        target_object = g
         pot_locations = mdp.get_pot_locations()
         for index, pot in enumerate(pot_locations):
             previous_pot = state.get_object(pot) if state.has_object(pot) else None

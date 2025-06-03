@@ -5,6 +5,8 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 
+from imrl_agent_new.overcooked.outcome import int_to_item
+
 DEFAULT_IMG_PATH = "fitness_plot.png"
 
 
@@ -35,10 +37,11 @@ def plot_fitness(records, output_path, smoothing_window):
     ir_by_space = defaultdict(list)
 
     for rec in records:
-        if rec.exploit:  # only consider exploit records
-            key = getattr(rec, "goal", str(rec.goal))
-            fitness_by_space[key].append(rec.fitness)
-            ir_by_space[key].append(rec.intrinsic_reward)
+        # if rec.exploit:  # only consider exploit records
+        goal_space = getattr(rec, "goal_space", None)
+        goal = getattr(rec, "goal", str(rec.goal))
+        fitness_by_space[goal_space + " " + int_to_item(goal)].append(rec.fitness)
+        ir_by_space[goal_space + " " + int_to_item(goal)].append(rec.intrinsic_reward)
 
     if not fitness_by_space:
         print("❌ No fitness data found.")
