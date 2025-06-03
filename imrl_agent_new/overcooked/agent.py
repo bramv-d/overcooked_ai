@@ -118,7 +118,7 @@ class IMGEPAgent(Agent):
 
         # ----------------- high-level action selection ----------------------
         if self.use_pi or self.parent_policy is None:
-            greedy = False
+            greedy = True
         else:
             greedy = self.parent_policy.intrinsic_reward > 0.0
 

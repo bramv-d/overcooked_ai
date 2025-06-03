@@ -37,11 +37,11 @@ def plot_fitness(records, output_path, smoothing_window):
     ir_by_space = defaultdict(list)
 
     for rec in records:
-        # if rec.exploit:  # only consider exploit records
-        goal_space = getattr(rec, "goal_space", None)
-        goal = getattr(rec, "goal", str(rec.goal))
-        fitness_by_space[goal_space + " " + int_to_item(goal)].append(rec.fitness)
-        ir_by_space[goal_space + " " + int_to_item(goal)].append(rec.intrinsic_reward)
+        if rec.exploit:  # only consider exploit records
+            goal_space = getattr(rec, "goal_space", None)
+            goal = getattr(rec, "goal", str(rec.goal))
+            fitness_by_space[goal_space + " " + int_to_item(goal)].append(rec.fitness)
+            ir_by_space[goal_space + " " + int_to_item(goal)].append(rec.intrinsic_reward)
 
     if not fitness_by_space:
         print("❌ No fitness data found.")
@@ -129,6 +129,6 @@ def make_graphs():
         if os.path.exists(path):
             print(f"✅ Found {path}")
             records = load_records(path)
-            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 50)
+            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 5)
         else:
             print(f"❌ Could not find {path}")

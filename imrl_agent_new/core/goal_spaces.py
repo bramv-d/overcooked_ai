@@ -75,6 +75,6 @@ def place_object_space(length_of_trajectory: int) -> GoalSpace:
 
 def create_goal_space(length_of_trajectory):
     return {
-        "pick_object" : make_pick_object_space(length_of_trajectory),
+        # "pick_object" : make_pick_object_space(length_of_trajectory),
         "place_object": place_object_space(length_of_trajectory),
     }
