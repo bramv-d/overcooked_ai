@@ -126,6 +126,6 @@ def make_graphs():
         if os.path.exists(path):
             print(f"✅ Found {path}")
             records = load_records(path)
-            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 150)
+            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 50)
         else:
             print(f"❌ Could not find {path}")

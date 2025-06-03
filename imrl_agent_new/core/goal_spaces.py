@@ -39,7 +39,7 @@ class GoalSpace:
 PICKABLE_OBJECTS = [
     ItemCode.ONION,
     # ItemCode.TOMATO,
-    # ItemCode.DISH,
+    ItemCode.DISH,
     # ItemCode.SOUP TODO define if we want to add this back, it is a stepping stone
 ]
 

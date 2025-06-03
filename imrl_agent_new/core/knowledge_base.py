@@ -49,13 +49,14 @@ class KnowledgeBase:
         """Insert a new experiment and flag index for rebuild."""
         self.buffer.append(rec)
 
-    def nearest(self, goal_space: str, goal_vector_id: int, exploit: int, k: int) -> List[ExperimentRecord] | None:
+    def nearest(self, goal_space: str, goal_vector_id: int, k: int, exploit: bool | None = None) -> List[
+                                                                                                        ExperimentRecord] | None:
         """
         Return the db_ids(s) of the most similar past experiment.
         """
         nearest = []
         for index, g in enumerate(reversed(self.buffer)):  # Iterate in reverse order
-            if g.goal_space == goal_space and g.goal == goal_vector_id and g.exploit == exploit:
+            if g.goal_space == goal_space and g.goal == goal_vector_id and (exploit is None or g.exploit == exploit):
                 nearest.append(g)
             if len(nearest) == k:
                 break

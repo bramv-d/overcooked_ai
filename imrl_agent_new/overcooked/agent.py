@@ -55,6 +55,7 @@ class IMGEPAgent(Agent):
         self.use_pi: bool = False
         self.t: int = 0
         self.goal_reach_time_step = None
+        self.parent_policy: ExperimentRecord | None = None
 
         # ---------- path planning --------------------------------------
         self.path = []
@@ -74,7 +75,7 @@ class IMGEPAgent(Agent):
 
         # Get the last 100 policies from the knowledge base with goal space ID self.goal_space_id and goal_vec self.goal_vec
         relevant_policies = self.kb.nearest(
-            self.goal_space_id, self.goal_vec, self.use_pi, 100)
+            self.goal_space_id, self.goal_vec, 100)
 
         if not relevant_policies:
             # --- explore: create new policy --
@@ -82,14 +83,14 @@ class IMGEPAgent(Agent):
         elif self.use_pi:
             # --- exploit: clone best policy ----
             best_idx = np.argmax([r.fitness for r in relevant_policies]) if relevant_policies else 0
-            theta_vec = self.kb.buffer[best_idx].theta
+            self.parent_policy = relevant_policies[best_idx]
+            theta_vec = self.parent_policy.theta
             self.neuro_policy = NeuroPolicy(theta=theta_vec)
         else:
             # --- explore:  mutate policy --
             # Pick a random policy from the previous 100 for this exploration loop
-            parent_policy_theta = random.choice(relevant_policies).theta
-            child_theta = parent_policy_theta + np.random.normal(0, 0.05, parent_policy_theta.shape)
-
+            self.parent_policy = random.choice(relevant_policies)
+            child_theta = self.parent_policy.theta + np.random.normal(0, 0.1, self.parent_policy.theta.shape)
             self.neuro_policy = NeuroPolicy(theta=child_theta)
 
     # ---------------------------------------------------------------- action
@@ -113,8 +114,14 @@ class IMGEPAgent(Agent):
         obs_vec = obs_to_vec(state, self.mdp, self.mp,
                              self.agent_id, self.max_dist)
 
+        # ----------------- high-level action selection ----------------------
+        if self.use_pi or self.parent_policy is None:
+            greedy = False
+        else:
+            greedy = self.parent_policy.intrinsic_reward > 0.0
+
         token = HighLevelActions(
-            self.neuro_policy.select_token(obs_vec, greedy=True))
+            self.neuro_policy.select_token(obs_vec, greedy=greedy))
 
         # ----------------- path planning ----------------------------------
         motion_goals = self._get_motion_goals(token, state)
@@ -138,14 +145,11 @@ class IMGEPAgent(Agent):
         fitness = gs.fitness(outcome, self.goal_vec,
                              pick_step=self.goal_reach_time_step)
         # intrinsic reward = Δ fitness vs nearest prior experiment
-        if len(self.kb) == 0:
+        if len(self.kb) == 0 or not self.parent_policy:
             prev_f = 0.0
         else:
-            nearest = self.kb.nearest(self.goal_space_id, self.goal_vec, self.use_pi, 1)
-            if not nearest:
-                prev_f = 0.0  # first visit to this region
-            else:
-                prev_f = nearest[0].fitness
+            prev_f = self.parent_policy.fitness
+
         r_i = fitness - prev_f
 
         # Save the amount of records in the knowledge base based on the r_i
