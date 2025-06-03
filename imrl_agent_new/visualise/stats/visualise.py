@@ -35,8 +35,8 @@ def plot_fitness(records, output_path, smoothing_window):
     ir_by_space = defaultdict(list)
 
     for rec in records:
-        if rec.exploit:
-            key = getattr(rec, "goal", str(tuple(rec.goal)))[0]
+        if rec.exploit:  # only consider exploit records
+            key = getattr(rec, "goal", str(rec.goal))
             fitness_by_space[key].append(rec.fitness)
             ir_by_space[key].append(rec.intrinsic_reward)
 

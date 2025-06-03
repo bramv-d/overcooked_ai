@@ -2,14 +2,13 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Dict
 
 import numpy as np
 
 from imrl_agent_new.core.goal_policy import GoalSpacePolicy
 from imrl_agent_new.core.goal_spaces import GoalSpace, create_goal_space
 from imrl_agent_new.core.knowledge_base import ExperimentRecord, KnowledgeBase
-from imrl_agent_new.core.neuro_policy import NeuroPolicy, mutate_neuro_policy
+from imrl_agent_new.core.neuro_policy import NeuroPolicy
 from imrl_agent_new.helper.choose_goal import get_plan
 from imrl_agent_new.helper.high_level_actions import HighLevelActions
 from imrl_agent_new.helper.obs_to_vect import obs_to_vec
@@ -32,9 +31,9 @@ class IMGEPAgent(Agent):
             env: OvercookedEnv,
             mdp: OvercookedGridworld,
             agent_id: int,
-            horizon: int = 400,
+            horizon: int,
+            max_dist: int,
             epsilon: float = 1.0,
-            max_dist: int = 0,
     ):
         # ---------- env refs ----------------------------------------------
         self.agent_id = agent_id
@@ -48,14 +47,13 @@ class IMGEPAgent(Agent):
         self.G = create_goal_space(env, horizon)
         self.bandit = GoalSpacePolicy(self.G, epsilon=epsilon)
 
-        self.kb = KnowledgeBase(context_dim=1, outcome_dim=5)
+        self.kb = KnowledgeBase()
         # ---------- per-rollout fields -----------------------------------
         self.goal_space_id: str | None = None
-        self.goal_vec: np.ndarray | None = None
+        self.goal_vec: int | None = None
         self.neuro_policy: NeuroPolicy | None = None
         self.use_pi: bool = False
         self.t: int = 0
-        self.meta: Dict[str, Any] = {}
         self.goal_reach_time_step = None
 
         # ---------- path planning --------------------------------------
@@ -70,29 +68,29 @@ class IMGEPAgent(Agent):
         self.goal_space_id, self.goal_vec = self.bandit.next_goal(None)
         self.goal_reach_time_step = None
         self.t = 0
-        self.meta = {"reach_step": None, "pick_step": None, "fill_step": None, "bad_token": 0}
         self.path = []
 
-        # Get all policies from the knowledge base with goal space ID self.goal_space_id and goal_vec self.goal_vec
-        neuro_policies = []
-        for policy in self.kb.buffer:  # limit to the last 50 policies
-            if policy.goal_space == self.goal_space_id and np.array_equal(policy.goal, self.goal_vec):
-                neuro_policies.append(policy)
-            if len(neuro_policies) >= 50:
-                break
-
-        best_idx = np.argmax([r.fitness for r in neuro_policies]) if neuro_policies else 0
         self.use_pi = (random.random() > 0.8)
-        if not neuro_policies:
+
+        # Get the last 100 policies from the knowledge base with goal space ID self.goal_space_id and goal_vec self.goal_vec
+        relevant_policies = self.kb.nearest(
+            self.goal_space_id, self.goal_vec, self.use_pi, 100)
+
+        if not relevant_policies:
             # --- explore: create new policy --
             self.neuro_policy = NeuroPolicy()
-        elif self.use_pi and neuro_policies:
+        elif self.use_pi:
             # --- exploit: clone best policy ----
+            best_idx = np.argmax([r.fitness for r in relevant_policies]) if relevant_policies else 0
             theta_vec = self.kb.buffer[best_idx].theta
             self.neuro_policy = NeuroPolicy(theta=theta_vec)
         else:
             # --- explore:  mutate policy --
-            self.neuro_policy = mutate_neuro_policy(neuro_policies)
+            # Pick a random policy from the previous 100 for this exploration loop
+            parent_policy_theta = random.choice(relevant_policies).theta
+            child_theta = parent_policy_theta + np.random.normal(0, 0.05, parent_policy_theta.shape)
+
+            self.neuro_policy = NeuroPolicy(theta=child_theta)
 
     # ---------------------------------------------------------------- action
     def action(self, state: OvercookedState):
@@ -116,7 +114,7 @@ class IMGEPAgent(Agent):
                              self.agent_id, self.max_dist)
 
         token = HighLevelActions(
-            self.neuro_policy.select_token(obs_vec, greedy=self.use_pi))
+            self.neuro_policy.select_token(obs_vec, greedy=True))
 
         # ----------------- path planning ----------------------------------
         motion_goals = self._get_motion_goals(token, state)
@@ -143,20 +141,31 @@ class IMGEPAgent(Agent):
         if len(self.kb) == 0:
             prev_f = 0.0
         else:
-            idx, _ = self.kb.nearest(np.array([0]), outcome)
-            prev_f = self.kb.buffer[idx].fitness
+            nearest = self.kb.nearest(self.goal_space_id, self.goal_vec, self.use_pi, 1)
+            if not nearest:
+                prev_f = 0.0  # first visit to this region
+            else:
+                prev_f = nearest[0].fitness
         r_i = fitness - prev_f
 
-        self.kb.add_record(ExperimentRecord(
-            context=np.array([0]),
-            goal=self.goal_vec,
-            goal_space=self.goal_space_id,
-            theta=self.neuro_policy.theta,  # store network parameters
-            outcome=outcome,
-            fitness=fitness,
-            intrinsic_reward=r_i,
-            exploit=self.use_pi,
-        ))
+        # Save the amount of records in the knowledge base based on the r_i
+        # This follows the idea of neuro evolution where more successful policies are recorded more often and bad policies are recorded less often
+        record_amount = int(max(1, 10 * r_i))
+
+        for _ in range(record_amount):
+            self.kb.add_record(ExperimentRecord(
+                context=np.array([0]),
+                goal=self.goal_vec,
+                goal_space=self.goal_space_id,
+                theta=self.neuro_policy.theta,  # store network parameters
+                outcome=outcome,
+                fitness=fitness,
+                intrinsic_reward=r_i,
+                exploit=self.use_pi,
+            ))
+
+        # Delete the oldest records if the knowledge base for this goal exceeds 1000
+        # self.cap_records(self.goal_space_id, max_records=1000)
 
         if self.use_pi:
             self.bandit.update(self.goal_space_id, r_i)

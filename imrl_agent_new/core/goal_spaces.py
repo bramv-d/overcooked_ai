@@ -1,7 +1,5 @@
 import random
 
-import numpy as np
-
 from imrl_agent_new.overcooked.outcome import ItemCode, item_to_int
 
 
@@ -41,24 +39,23 @@ class GoalSpace:
 PICKABLE_OBJECTS = [
     ItemCode.ONION,
     # ItemCode.TOMATO,
-    ItemCode.DISH,
+    # ItemCode.DISH,
     # ItemCode.SOUP TODO define if we want to add this back, it is a stepping stone
 ]
 
 def make_pick_object_space(length_of_trajectory: int) -> GoalSpace:
     """Goal: hold a requested object; reward falls as pickup time ↑."""
     def sampler():
-        code = random.choice(PICKABLE_OBJECTS).value
-        return np.array([code], dtype=np.int8)
+        return random.choice(PICKABLE_OBJECTS).value
 
     def fitness(o, g, *, pick_step=None, **_):
-        if pick_step is None or int(o[2]) != int(g[0]):  # slot 2 = held
+        if pick_step is None or int(o[2]) != int(g):  # slot 2 = held
             return 0.0
         return 1.0 - (pick_step / max(length_of_trajectory, 1))           # fast = high
 
     def success(player, g):
         held = item_to_int(player.get_object()) if player.has_object() else 0
-        if held == int(g[0]):
+        if held == int(g):
             return True
         return None
 

@@ -13,7 +13,7 @@ class NeuroPolicy:
     def __init__(self, theta: np.ndarray | None = None):
 
         self.inp_dim = 14  # from obs_to_vec()
-        self.hidden_dim = 64
+        self.hidden_dim = 10
         self.num_tokens = 9
         self.sigma_mut = 0.025
 
@@ -61,13 +61,3 @@ class NeuroPolicy:
         i += H * A
         b2 = self.theta[i:i + A]
         return W1, b1, W2, b2
-
-
-def mutate_neuro_policy(neuro_policies: list[NeuroPolicy]) -> NeuroPolicy:
-    """Mutate policy weights in-place."""
-
-    # 1) Get the previous policy θ
-    parent_theta = neuro_policies[-1].theta.copy()
-
-    child_theta = parent_theta + np.random.normal(0, 0.05, parent_theta.shape)
-    return NeuroPolicy(child_theta)
