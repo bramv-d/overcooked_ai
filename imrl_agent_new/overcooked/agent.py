@@ -43,10 +43,10 @@ class IMGEPAgent(Agent):
         self.mp: MotionPlanner = env.mp
         self.max_dist = max_dist
         self.mlam: MediumLevelActionManager = env.mlam
+        self.previous_state: OvercookedState | None = None
         # ---------- IMGEP machinery --------------------------------------
-        self.G = create_goal_space(env, horizon)
+        self.G = create_goal_space(horizon)
         self.bandit = GoalSpacePolicy(self.G, epsilon=epsilon)
-
         self.kb = KnowledgeBase()
         # ---------- per-rollout fields -----------------------------------
         self.goal_space_id: str | None = None
@@ -56,7 +56,7 @@ class IMGEPAgent(Agent):
         self.t: int = 0
         self.goal_reach_time_step = None
         self.parent_policy: ExperimentRecord | None = None
-
+        self.previous_state: OvercookedState | None = None
         # ---------- path planning --------------------------------------
         self.path = []
         super().__init__()
@@ -103,13 +103,15 @@ class IMGEPAgent(Agent):
             return random_action, {}
 
         gs = self.G[self.goal_space_id]
-        if gs.success(state.players[self.agent_id], self.goal_vec) and self.goal_reach_time_step is None:
+
+        if self.previous_state and gs.success(self.agent_id, self.goal_vec, state, self.previous_state,
+                                              self.mdp) and self.goal_reach_time_step is None:
             self.goal_reach_time_step = self.t
             return Action.STAY, {}
 
         if self.path:
             step = self.path.pop(0)
-            return step, {}
+            return self.return_action(step, state)
 
         obs_vec = obs_to_vec(state, self.mdp, self.mp,
                              self.agent_id, self.max_dist)
@@ -131,19 +133,22 @@ class IMGEPAgent(Agent):
             legal_actions = list(Action.MOTION_ACTIONS)
             # Pick a random action from the legal actions
             random_action = random.choice(legal_actions)
-            return random_action, {}
+            return self.return_action(random_action, state)
         action = self.path.pop(0)
+        return self.return_action(action, state)
+
+    def return_action(self, action, state):
+        self.previous_state = state
         return action, {}
 
     # ---------------------------------------------------------------- finish
     def finish_rollout(self, final_state: OvercookedState, soups_delivered: int):
         outcome = extract_outcome(final_state,
                                   final_state.players[self.agent_id],
-                                  self.mdp, soups_delivered)
+                                  self.mdp)
 
         gs: GoalSpace = self.G[self.goal_space_id]
-        fitness = gs.fitness(outcome, self.goal_vec,
-                             pick_step=self.goal_reach_time_step)
+        fitness = gs.fitness(self.goal_reach_time_step)
         # intrinsic reward = Δ fitness vs nearest prior experiment
         if len(self.kb) == 0 or not self.parent_policy:
             prev_f = 0.0
@@ -194,8 +199,6 @@ class IMGEPAgent(Agent):
                 return self.mlam.pickup_soup_with_dish_actions(pots_object)
             case HighLevelActions.GO_SERVE:
                 return self.mlam.deliver_soup_actions()
-            case HighLevelActions.GO_COUNTER:
-                return self.mlam.place_obj_on_counter_actions(state)
             case HighLevelActions.START_COOKING:
                 return self.mlam.start_cooking_actions(pots_object)
         return None

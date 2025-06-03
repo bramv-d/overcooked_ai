@@ -14,7 +14,7 @@ class NeuroPolicy:
 
         self.inp_dim = 14  # from obs_to_vec()
         self.hidden_dim = 10
-        self.num_tokens = 9
+        self.num_tokens = 8
 
         if theta is None:  # fresh initialization
             W1 = he_init(self.inp_dim, self.hidden_dim)

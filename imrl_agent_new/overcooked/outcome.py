@@ -9,8 +9,7 @@ from overcooked_ai_py.mdp.overcooked_mdp import ObjectState, OvercookedGridworld
 def extract_outcome(
     state: OvercookedState,
     player: PlayerState,
-    grid_world: OvercookedGridworld,
-    soups_delivered: int
+        mdp: OvercookedGridworld
 ) -> np.ndarray:
     """
     Returns a 4-dim outcome vector  φ(τ) = [x, y, inv_code, soups]  for now.
@@ -24,12 +23,9 @@ def extract_outcome(
     inv_code = item_to_int(player.get_object()) if player.has_object() else 0
 
     # ----- 3   : placeholder for pot state (to be filled in later) ----------
-    pot_code = 0                             # PotCode.EMPTY for now
+    pot_states = mdp.get_pot_states(state)  # PotCode.EMPTY for now
 
-    # ----- 4   : soups delivered --------------------------------------------
-    soups = soups_delivered
-
-    return np.array([x, y, inv_code, pot_code, soups], dtype=np.float32)
+    return np.array([x, y, inv_code, pot_states])
 
 from enum import IntEnum
 
