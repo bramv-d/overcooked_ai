@@ -21,7 +21,6 @@ class GoalSpacePolicy:
     def __init__(
         self,
         goal_spaces: Dict[str, Any],
-        *,
         epsilon: float = 0.20,
         lp_alpha: float = 0.10,           # EMA smoothing factor
     ):
@@ -30,10 +29,10 @@ class GoalSpacePolicy:
         self.alpha   = lp_alpha
 
         # running exponential averages of intrinsic reward
-        self.avg_lp = defaultdict(float)    # r̄_k  (initially 0)
+        self.ir_by_space = defaultdict(float)  # r̄_k  (initially 0)
 
     # ---------------------------------------------------------------- PUBLIC
-    def next_goal(self, context: Any | None = None) -> Tuple[str, Any]:
+    def next_goal(self) -> Tuple[str, Any]:
         """
         Returns (space_id, goal_vector g).
 
@@ -43,18 +42,8 @@ class GoalSpacePolicy:
             space_id = random.choice(list(self.spaces))           # pure explore
         else:
             # exploit: soft-probability ∝ max(avg_lp, 0)
-            weights = {k: max(0.0, self.avg_lp[k]) for k in self.spaces}
-            total   = sum(weights.values())
-            if total == 0.0:                                       # no progress yet
-                space_id = random.choice(list(self.spaces))
-            else:
-                r = random.random() * total
-                acc = 0.0
-                for k, w in weights.items():
-                    acc += w
-                    if acc >= r:
-                        space_id = k
-                        break
+            space_id = self.ir_by_space
+
 
         # ---------- sample goal inside that space --------------------------
         g = self.spaces[space_id].sample()

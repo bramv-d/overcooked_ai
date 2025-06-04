@@ -33,7 +33,6 @@ class IMGEPAgent(Agent):
             agent_id: int,
             horizon: int,
             max_dist: int,
-            epsilon: float = 1.0,
     ):
         # ---------- env refs ----------------------------------------------
         self.agent_id = agent_id
@@ -46,7 +45,7 @@ class IMGEPAgent(Agent):
         self.previous_state: OvercookedState | None = None
         # ---------- IMGEP machinery --------------------------------------
         self.G = create_goal_space(horizon)
-        self.bandit = GoalSpacePolicy(self.G, epsilon=epsilon)
+        self.bandit = GoalSpacePolicy(self.G)
         self.kb = KnowledgeBase()
         # ---------- per-rollout fields -----------------------------------
         self.goal_space_id: str | None = None
@@ -66,7 +65,7 @@ class IMGEPAgent(Agent):
         """Called by Overcooked-AI at episode start."""
         super().reset()
         self.mdp = mdp
-        self.goal_space_id, self.goal_vec = self.bandit.next_goal(None)
+        self.goal_space_id, self.goal_vec = self.bandit.next_goal()
         self.goal_reach_time_step = None
         self.t = 0
         self.path = []
@@ -153,12 +152,13 @@ class IMGEPAgent(Agent):
         if len(self.kb) == 0 or not self.parent_policy:
             prev_f = 0.0
         else:
-            prev_f = self.parent_policy.fitness
+            nearest = self.kb.nearest(self.goal_space_id, self.goal_vec, 30, self.use_pi)
+            prev_f = np.mean([r.fitness for r in nearest]) if nearest else 0.0
 
-        r_i = fitness - prev_f
+        r_i = max(0, fitness - prev_f)
 
         # Save the amount of records in the knowledge base based on the r_i
-        # This follows the idea of neuro evolution where more successful policies are recorded more often and bad policies are recorded less often
+        # This follows the idea of neuro evolution where successful policies are recorded more often and bad policies are recorded less often
         record_amount = int(max(1, 10 * r_i))
 
         for _ in range(record_amount):
