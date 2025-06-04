@@ -38,12 +38,12 @@ class GoalSpacePolicy:
 
         """
         # ---------- choose a space -----------------------------------------
-        if random.random() < self.epsilon:
+        if random.random() < self.epsilon or not self.ir_by_space:
             space_id = random.choice(list(self.spaces))           # pure explore
         else:
             # exploit: soft-probability ∝ max(avg_lp, 0)
             space_id = self.ir_by_space
-
+            space_id = max(self.ir_by_space, key=lambda k: max(self.ir_by_space[k], 0.0))
 
         # ---------- sample goal inside that space --------------------------
         g = self.spaces[space_id].sample()
@@ -56,9 +56,7 @@ class GoalSpacePolicy:
         Updates the exponential moving average of learning-progress for
         the given space.
         """
-        old = self.avg_lp[space_id]
-        new = old * (1.0 - self.alpha) + intrinsic_reward * self.alpha
-        self.avg_lp[space_id] = new
+        self.ir_by_space[space_id] = intrinsic_reward
 
     # ---------------------------------------------------------------- HELPERS
     def refresh_spaces(self, new_spaces: Dict[str, Any]):
@@ -68,4 +66,4 @@ class GoalSpacePolicy:
         """
         self.spaces = new_spaces
         for k in new_spaces:
-            self.avg_lp.setdefault(k, 0.0)
+            self.ir_by_space.setdefault(k, 0.0)

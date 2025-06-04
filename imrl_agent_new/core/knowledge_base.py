@@ -20,6 +20,7 @@ class ExperimentRecord:
     fitness: float
     intrinsic_reward: float
     exploit: bool = False  # True if this was an exploit step, False if it was exploration
+    rollout_idx: int = 0  # episode number, used to track the order of experiments
 
     # Optional extras (kept for replay/analysis)
     trajectory: List[Tuple[np.ndarray, np.ndarray]] = field(default_factory=list)
@@ -74,19 +75,3 @@ class KnowledgeBase:
     def load_buffer(self, path: str):
         with open(path, "rb") as f:
             self.buffer = pickle.load(f)
-
-    def cap_records(self, goal_space_id: str, max_records: int = 1000):
-        """Cap the records for the given goal space to max_records by removing the oldest items."""
-        # Filter records for the given goal space
-        filtered_records = [record for record in self.kb.buffer if record.goal_space == goal_space_id]
-        excess_count = len(filtered_records) - max_records
-
-        if excess_count > 0:
-            # Sort records by timestamp (oldest first)
-            filtered_records.sort(key=lambda record: record.timestamp)
-            records_to_remove = filtered_records[:excess_count]
-
-            # Remove the records from the buffer using db_id
-            records_to_remove_ids = {record.db_id for record in records_to_remove}
-            self.buffer = [record for record in self.buffer if record.db_id not in records_to_remove_ids]
-            self._index_data = True

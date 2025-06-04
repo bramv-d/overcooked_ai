@@ -28,52 +28,53 @@ def moving_average(values, window_size):
 # ------------------ plot function ----------------------------
 
 def plot_fitness(records, output_path, smoothing_window):
-    """
-    Line plot of FITNESS and LEARNING-PROGRESS over time, one line per goal space.
-    Fitness  → solid line (left y-axis)
-    LP       → dashed line (right y-axis)
-    """
     fitness_by_space = defaultdict(list)
     ir_by_space = defaultdict(list)
 
     for rec in records:
-        if rec.exploit:  # only consider exploit records
+        if rec.exploit:
             goal_space = getattr(rec, "goal_space", None)
             goal = getattr(rec, "goal", str(rec.goal))
-            fitness_by_space[goal_space + " " + int_to_item(goal)].append(rec.fitness)
-            ir_by_space[goal_space + " " + int_to_item(goal)].append(rec.intrinsic_reward)
+            label = goal_space + " " + int_to_item(goal)
+            fitness_by_space[label].append((rec.rollout_idx, rec.fitness))
+            ir_by_space[label].append((rec.rollout_idx, rec.intrinsic_reward))
 
     if not fitness_by_space:
         print("❌ No fitness data found.")
         return
 
     plt.figure(figsize=(11, 6))
+    ax_f = plt.gca()
+    ax_ir = ax_f.twinx()
 
-    ax_f = plt.gca()  # left axis  (fitness)
-    ax_ir = ax_f.twinx()  # right axis (intrinsic reward)
+    colors = plt.cm.tab10.colors
 
-    colors = plt.cm.tab10.colors  # up to 10 distinct colours
+    for idx, label in enumerate(fitness_by_space):
+        # sort by rollout index to ensure lines are smooth
+        fitness_sorted = sorted(fitness_by_space[label])
+        ir_sorted = sorted(ir_by_space[label])
 
-    for idx, goal_space in enumerate(fitness_by_space):
-        # ----- fitness (solid) -----
-        fit_vals = moving_average(fitness_by_space[goal_space], smoothing_window)
-        x = range(len(fit_vals))
-        ax_f.plot(x, fit_vals, color=colors[idx % 10], label=f"{goal_space} fitness")
+        x_fit, y_fit = zip(*fitness_sorted)
+        x_ir, y_ir = zip(*ir_sorted)
 
-        ir_vals = moving_average(ir_by_space[goal_space], smoothing_window)
-        ax_ir.plot(x, ir_vals, color=colors[idx % 10], linestyle=":",
-                   label=f"{goal_space} IR")
+        # apply smoothing
+        y_fit_smooth = moving_average(y_fit, smoothing_window)
+        y_ir_smooth = moving_average(y_ir, smoothing_window)
 
-    # ----- axis cosmetics -----
+        # adjust x accordingly
+        x_fit = x_fit[len(x_fit) - len(y_fit_smooth):]
+        x_ir = x_ir[len(x_ir) - len(y_ir_smooth):]
+
+        ax_f.plot(x_fit, y_fit_smooth, color=colors[idx % 10], label=f"{label} fitness")
+        ax_ir.plot(x_ir, y_ir_smooth, color=colors[idx % 10], linestyle=":", label=f"{label} IR")
+
     ax_f.set_xlabel("Roll-out index")
     ax_f.set_ylabel("Fitness (smoothed)")
     ax_ir.set_ylabel("Intrinsic reward (smoothed)")
-
-    ax_f.set_ylim(0, 1.05)  # fitness is in [0, 1]
+    ax_f.set_ylim(0, 1.05)
     ax_f.set_title("Fitness & Learning-Progress per goal space")
     ax_f.grid(True, which="both", linestyle=":")
 
-    # combine legends from both axes
     lines, labels = ax_f.get_legend_handles_labels()
     lines2, labels2 = ax_ir.get_legend_handles_labels()
     ax_f.legend(lines + lines2, labels + labels2, loc="upper left", fontsize=9)
@@ -92,7 +93,8 @@ def plot_competence(records, output_path):
     for rec in records:
         if rec.exploit:
             key = getattr(rec, "goal_space", str(tuple(rec.goal)))
-            competence_by_space[key].append(rec.fitness)
+            if rec.rollout_idx not in competence_by_space[key]:
+                competence_by_space[key].append(rec.fitness)
 
     if not competence_by_space:
         print("❌ No competence data found.")
@@ -129,6 +131,6 @@ def make_graphs():
         if os.path.exists(path):
             print(f"✅ Found {path}")
             records = load_records(path)
-            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 5)
+            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 50)
         else:
             print(f"❌ Could not find {path}")

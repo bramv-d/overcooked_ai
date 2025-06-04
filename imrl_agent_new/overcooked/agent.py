@@ -160,6 +160,7 @@ class IMGEPAgent(Agent):
         # Save the amount of records in the knowledge base based on the r_i
         # This follows the idea of neuro evolution where successful policies are recorded more often and bad policies are recorded less often
         record_amount = int(max(1, 10 * r_i))
+        rollout_idx = self.kb.buffer[-1].rollout_idx + 1 if self.kb.buffer else 0
 
         for _ in range(record_amount):
             self.kb.add_record(ExperimentRecord(
@@ -171,6 +172,7 @@ class IMGEPAgent(Agent):
                 fitness=fitness,
                 intrinsic_reward=r_i,
                 exploit=self.use_pi,
+                rollout_idx=rollout_idx,
             ))
 
         # Delete the oldest records if the knowledge base for this goal exceeds 1000
