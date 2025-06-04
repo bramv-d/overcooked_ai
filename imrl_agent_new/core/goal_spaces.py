@@ -49,7 +49,7 @@ def place_object_space(length_of_trajectory: int) -> GoalSpace:
     def fitness(pick_step=None):
         if pick_step is None:
             return 0.0
-        return 1.0 - (pick_step / max(length_of_trajectory, 1))  # fast = high
+        return 1.0
 
     def success(agent_id: int, g: int, state: OvercookedState, previous_state: OvercookedState,
                 mdp: OvercookedGridworld):
@@ -73,8 +73,48 @@ def place_object_space(length_of_trajectory: int) -> GoalSpace:
     return GoalSpace("PLACE_OBJECT", 1, sampler=sampler, fitness_fn=fitness, success_fn=success)
 
 
+def start_cooking_space(length_of_trajectory: int) -> GoalSpace:
+    """Goal: start cooking a requested object; reward falls as cooking time ↑."""
+
+    def sampler():
+        return None
+
+    def fitness(pick_step=None):
+        if pick_step is None:
+            return 0.0
+        return 1.0 - (pick_step / max(length_of_trajectory, 1))  # fast = high
+
+    def success(agent_id: int, g: int, state: OvercookedState, previous_state: OvercookedState,
+                mdp: OvercookedGridworld):
+        current_agent = state.players[agent_id]
+        previous_agent: PlayerState = previous_state.players[agent_id]
+
+        previous_pot_state = mdp.get_pot_states(previous_state)
+        current_pot_state = mdp.get_pot_states(state)
+
+        previous_cooking_pots = mdp.get_cooking_pots(previous_pot_state)
+        current_cooking_pots = mdp.get_cooking_pots(current_pot_state)
+        if previous_cooking_pots or not current_cooking_pots:  # If the agent had a pot cooking or is currently not cooking
+            return False
+
+        if not '3_items' in previous_pot_state:
+            return False
+
+        adjacent_features = mdp.get_adjacent_features(previous_agent)
+        adjacent_positions = [feature[0] for feature in adjacent_features]  # Extract pot positions
+        for pot in current_cooking_pots:
+            if pot in adjacent_positions:
+                # The agent is adjacent to the cooking pot
+                return True
+
+        return False
+
+    return GoalSpace("START_COOKING", 1, sampler=sampler, fitness_fn=fitness, success_fn=success)
+
+
 def create_goal_space(length_of_trajectory):
     return {
         "pick_object": make_pick_object_space(length_of_trajectory),
         "place_object": place_object_space(length_of_trajectory),
+        "start_cooking": start_cooking_space(length_of_trajectory),
     }

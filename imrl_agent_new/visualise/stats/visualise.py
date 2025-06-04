@@ -5,8 +5,6 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 
-from imrl_agent_new.overcooked.outcome import int_to_item
-
 DEFAULT_IMG_PATH = "fitness_plot.png"
 
 
@@ -34,10 +32,14 @@ def plot_fitness(records, output_path, smoothing_window):
     for rec in records:
         if rec.exploit:
             goal_space = getattr(rec, "goal_space", None)
-            goal = getattr(rec, "goal", str(rec.goal))
-            label = goal_space + " " + int_to_item(goal)
+            # goal = getattr(rec, "goal", str(rec.goal))
+            label = goal_space
             fitness_by_space[label].append((rec.rollout_idx, rec.fitness))
             ir_by_space[label].append((rec.rollout_idx, rec.intrinsic_reward))
+
+    for label, records in fitness_by_space.items():
+        rollout_idxs = sorted(idx for idx, _ in records)
+        print(f"{label} starts at rollout {rollout_idxs[0]}")
 
     if not fitness_by_space:
         print("❌ No fitness data found.")
@@ -84,44 +86,6 @@ def plot_fitness(records, output_path, smoothing_window):
     print(f"✅ Saved line plot to {output_path}")
 
 
-def plot_competence(records, output_path):
-    """
-    Line plot of COMPETENCE over time, one line per goal space.
-    """
-    competence_by_space = defaultdict(list)
-
-    for rec in records:
-        if rec.exploit:
-            key = getattr(rec, "goal_space", str(tuple(rec.goal)))
-            if rec.rollout_idx not in competence_by_space[key]:
-                competence_by_space[key].append(rec.fitness)
-
-    if not competence_by_space:
-        print("❌ No competence data found.")
-        return
-
-    plt.figure(figsize=(11, 6))
-    ax = plt.gca()
-
-    colors = plt.cm.tab10.colors  # up to 10 distinct colours
-
-    for idx, goal_space in enumerate(competence_by_space):
-        comp_vals = moving_average(competence_by_space[goal_space], 1)
-        x = range(len(comp_vals))
-        ax.plot(x, comp_vals, color=colors[idx % 10], label=f"{goal_space} competence")
-
-    # ----- axis cosmetics -----
-    ax.set_xlabel("Roll-out index")
-    ax.set_ylabel("Competence (smoothed)")
-    ax.set_ylim(0, 1.05)  # competence is in [0, 1]
-    ax.set_title("Competence per goal space")
-    ax.grid(True, which="both", linestyle=":")
-
-    ax.legend(loc="upper left", fontsize=9)
-
-    plt.tight_layout()
-    plt.savefig(output_path)
-    print(f"✅ Saved competence plot to {output_path}")
 
 
 # ------------------ load & run -------------------------------
@@ -131,6 +95,6 @@ def make_graphs():
         if os.path.exists(path):
             print(f"✅ Found {path}")
             records = load_records(path)
-            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 50)
+            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 30)
         else:
             print(f"❌ Could not find {path}")

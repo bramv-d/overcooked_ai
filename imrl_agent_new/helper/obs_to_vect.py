@@ -25,6 +25,8 @@ def obs_to_vec(
     d_pots_cooking = mp.min_cost_to_feature(me.pos_and_or, mdp.get_cooking_pots(pot_states))
     d_empty_pots = mp.min_cost_to_feature(me.pos_and_or, mdp.get_empty_pots(mdp.get_pot_states(state)))
     d_ready_pots = mp.min_cost_to_feature(me.pos_and_or, mdp.get_ready_pots(mdp.get_pot_states(state)))
+    d_full_not_cooking_pots = mp.min_cost_to_feature(me.pos_and_or,
+                                                     mdp.get_full_but_not_cooking_pots(mdp.get_pot_states(state)))
     d_counter = mp.min_cost_to_feature(me.pos_and_or, mdp.get_empty_counter_locations(state))
     d_serving = mp.min_cost_to_feature(me.pos_and_or, mdp.get_serving_locations())
 
@@ -42,11 +44,12 @@ def obs_to_vec(
         min(d_tomato, diam) / diam,  # 6 dist to tomato dispenser
         min(d_pots_cooking, diam) / diam,  # 7 dist to cooking pot
         min(d_empty_pots, diam) / diam,  # 8 dist to empty pot
-        min(d_ready_pots, diam) / diam,  # 9 dist to ready pot
-        min(d_counter, diam) / diam,  # 10 dist to empty counter
-        min(d_serving, diam) / diam,  # 11 dist to serving/pass window
-        rel_dx,  # 12 partner dx normalised
-        rel_dy,  # 13 partner dy normalised
+        min(d_full_not_cooking_pots, diam) / diam,  # 9 dist to full but not cooking pot
+        min(d_ready_pots, diam) / diam,  # 10 dist to ready pot
+        min(d_counter, diam) / diam,  # 11 dist to empty counter
+        min(d_serving, diam) / diam,  # 12 dist to serving/pass window
+        rel_dx,  # 13 partner dx normalised
+        rel_dy,  # 14 partner dy normalised
     ], dtype=np.float32)
 
-    return feat  # shape = (14,)
+    return feat  # shape = (15,)

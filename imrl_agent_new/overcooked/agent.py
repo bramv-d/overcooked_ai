@@ -152,7 +152,7 @@ class IMGEPAgent(Agent):
         if len(self.kb) == 0 or not self.parent_policy:
             prev_f = 0.0
         else:
-            nearest = self.kb.nearest(self.goal_space_id, self.goal_vec, 30, self.use_pi)
+            nearest = self.kb.nearest(self.goal_space_id, self.goal_vec, 10, self.use_pi)
             prev_f = np.mean([r.fitness for r in nearest]) if nearest else 0.0
 
         r_i = max(0, fitness - prev_f)

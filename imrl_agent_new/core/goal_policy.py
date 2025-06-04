@@ -29,8 +29,7 @@ class GoalSpacePolicy:
         self.alpha   = lp_alpha
 
         # running exponential averages of intrinsic reward
-        self.ir_by_space = defaultdict(float)  # r̄_k  (initially 0)
-
+        self.ir_by_space = defaultdict(float, {space_id: 1 for space_id in self.spaces})
     # ---------------------------------------------------------------- PUBLIC
     def next_goal(self) -> Tuple[str, Any]:
         """
@@ -41,8 +40,6 @@ class GoalSpacePolicy:
         if random.random() < self.epsilon or not self.ir_by_space:
             space_id = random.choice(list(self.spaces))           # pure explore
         else:
-            # exploit: soft-probability ∝ max(avg_lp, 0)
-            space_id = self.ir_by_space
             space_id = max(self.ir_by_space, key=lambda k: max(self.ir_by_space[k], 0.0))
 
         # ---------- sample goal inside that space --------------------------
