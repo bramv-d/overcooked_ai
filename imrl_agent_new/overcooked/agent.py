@@ -175,11 +175,10 @@ class IMGEPAgent(Agent):
                 rollout_idx=rollout_idx,
             ))
 
-        # Delete the oldest records if the knowledge base for this goal exceeds 1000
-        # self.cap_records(self.goal_space_id, max_records=1000)
-
         if self.use_pi:
-            self.bandit.update(self.goal_space_id, r_i)
+            nearest = self.kb.nearest(self.goal_space_id, self.goal_vec, 10, self.use_pi)
+            avg_r_i = np.mean([r.intrinsic_reward for r in nearest]) if nearest else 0.0
+            self.bandit.update(self.goal_space_id, avg_r_i)
 
     def _get_motion_goals(self, high_level_action: HighLevelActions, state: OvercookedState):
         all_counters = self.mdp.get_counter_locations()

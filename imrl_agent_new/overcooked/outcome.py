@@ -6,6 +6,7 @@ import numpy as np
 from overcooked_ai_py.mdp.overcooked_mdp import ObjectState, OvercookedGridworld, OvercookedState, PlayerState
 
 
+# Maybe we should save the outcome of the agent once it succeeds in the task.
 def extract_outcome(
     state: OvercookedState,
     player: PlayerState,

@@ -17,7 +17,7 @@ class GoalSpace:
 PICKABLE_OBJECTS = [
     ItemCode.ONION,
     # ItemCode.TOMATO,
-    ItemCode.DISH,
+    # ItemCode.DISH,
 ]
 
 def make_pick_object_space(length_of_trajectory: int) -> GoalSpace:
@@ -49,7 +49,7 @@ def place_object_space(length_of_trajectory: int) -> GoalSpace:
     def fitness(pick_step=None):
         if pick_step is None:
             return 0.0
-        return 1.0
+        return 1.0 - (pick_step / max(length_of_trajectory, 1))  # fast = high
 
     def success(agent_id: int, g: int, state: OvercookedState, previous_state: OvercookedState,
                 mdp: OvercookedGridworld):
@@ -82,7 +82,7 @@ def start_cooking_space(length_of_trajectory: int) -> GoalSpace:
     def fitness(pick_step=None):
         if pick_step is None:
             return 0.0
-        return 1.0 - (pick_step / max(length_of_trajectory, 1))  # fast = high
+        return 1.0
 
     def success(agent_id: int, g: int, state: OvercookedState, previous_state: OvercookedState,
                 mdp: OvercookedGridworld):
@@ -112,9 +112,30 @@ def start_cooking_space(length_of_trajectory: int) -> GoalSpace:
     return GoalSpace("START_COOKING", 1, sampler=sampler, fitness_fn=fitness, success_fn=success)
 
 
+def pickup_soup_space(length_of_trajectory: int) -> GoalSpace:
+    def sampler():
+        return None
+
+    def fitness(pick_step=None):
+        if pick_step is None:
+            return 0.0
+        return 1.0
+
+    def success(agent_id: int, g: int, state: OvercookedState, previous_state: OvercookedState,
+                mdp: OvercookedGridworld):
+        player: PlayerState = state.players[agent_id]
+        held = player.get_object() if player.has_object() else 0
+        if held == ItemCode.SOUP:
+            return True
+        return None
+
+    return GoalSpace("PICKUP_SOUP", 1, sampler=sampler, fitness_fn=fitness, success_fn=success)
+
+
 def create_goal_space(length_of_trajectory):
     return {
-        "pick_object": make_pick_object_space(length_of_trajectory),
         "place_object": place_object_space(length_of_trajectory),
+        "pick_object": make_pick_object_space(length_of_trajectory),
         "start_cooking": start_cooking_space(length_of_trajectory),
+        "pickup_soup": pickup_soup_space(length_of_trajectory),
     }

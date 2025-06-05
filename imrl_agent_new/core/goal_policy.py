@@ -3,6 +3,8 @@ import random
 from collections import defaultdict
 from typing import Any, Dict, Tuple
 
+import numpy as np
+
 
 class GoalSpacePolicy:
     """
@@ -40,9 +42,11 @@ class GoalSpacePolicy:
         if random.random() < self.epsilon or not self.ir_by_space:
             space_id = random.choice(list(self.spaces))           # pure explore
         else:
-            space_id = max(self.ir_by_space, key=lambda k: max(self.ir_by_space[k], 0.0))
-
-        # ---------- sample goal inside that space --------------------------
+            ir_values = self.ir_by_space
+            max_val = max(ir_values.values())
+            # Use isclose to handle float comparisons
+            best_spaces = [k for k, v in ir_values.items() if np.isclose(v, max_val)]
+            space_id = random.choice(best_spaces)
         g = self.spaces[space_id].sample()
         return space_id, g
 
@@ -54,13 +58,3 @@ class GoalSpacePolicy:
         the given space.
         """
         self.ir_by_space[space_id] = intrinsic_reward
-
-    # ---------------------------------------------------------------- HELPERS
-    def refresh_spaces(self, new_spaces: Dict[str, Any]):
-        """
-        Replace the dict of goal-spaces (e.g. when you load a new layout).
-        Keeps existing LP stats for overlapping keys, initialises new keys to 0.
-        """
-        self.spaces = new_spaces
-        for k in new_spaces:
-            self.ir_by_space.setdefault(k, 0.0)
