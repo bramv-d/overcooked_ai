@@ -31,7 +31,7 @@ class GoalSpacePolicy:
         self.alpha   = lp_alpha
 
         # running exponential averages of intrinsic reward
-        self.ir_by_space = defaultdict(float, {space_id: 1 for space_id in self.spaces})
+        self.ir_by_space = defaultdict(float, {space_id: 0 for space_id in self.spaces})
     # ---------------------------------------------------------------- PUBLIC
     def next_goal(self) -> Tuple[str, Any]:
         """
@@ -52,9 +52,7 @@ class GoalSpacePolicy:
 
     def update(self, space_id: str, intrinsic_reward: float):
         """
-        Call AFTER an *exploitation* episode with Π.
-
-        Updates the exponential moving average of learning-progress for
-        the given space.
+        Update EMA of learning progress for the given goal space.
         """
-        self.ir_by_space[space_id] = intrinsic_reward
+        old = self.ir_by_space.get(space_id, intrinsic_reward)
+        self.ir_by_space[space_id] = old + self.alpha * (intrinsic_reward - old)

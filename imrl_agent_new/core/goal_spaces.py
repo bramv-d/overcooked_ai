@@ -6,9 +6,9 @@ from overcooked_ai_py.mdp.overcooked_mdp import ObjectState, OvercookedGridworld
 
 class GoalSpace:
     def __init__(self, name, dim, sampler, fitness_fn, success_fn=None):
-        self.name    = name
-        self.dim     = dim
-        self.sample  = sampler
+        self.name = name
+        self.dim = dim
+        self.sample = sampler
         self.fitness = fitness_fn
         # if None, the space never triggers early stop
         self.success = success_fn or (lambda obs, g: False)
@@ -17,23 +17,27 @@ class GoalSpace:
 PICKABLE_OBJECTS = [
     ItemCode.ONION,
     # ItemCode.TOMATO,
-    # ItemCode.DISH,
+    ItemCode.DISH,
 ]
+
 
 def make_pick_object_space(length_of_trajectory: int) -> GoalSpace:
     """Goal: hold a requested object; reward falls as pickup time ↑."""
+
     def sampler():
         return random.choice(PICKABLE_OBJECTS).value
 
-    def fitness(pick_step=None):
+    def fitness(pick_step: int, g: int, end_of_episode: bool, state: OvercookedState, previous_state: OvercookedState,
+                agent_id: int, mdp: OvercookedGridworld):
         if pick_step is None:
             return 0.0
-        return 1.0 - (pick_step / max(length_of_trajectory, 1))           # fast = high
+        return 1.0 - (pick_step / max(length_of_trajectory, 1))  # fast = high
 
-    def success(agent_id: int, g, state: OvercookedState, previous_state: OvercookedState, mdp: OvercookedGridworld):
+    def success(agent_id: int, g: int, state: OvercookedState, previous_state: OvercookedState,
+                mdp: OvercookedGridworld):
         player: PlayerState = state.players[agent_id]
         held = item_to_int(player.get_object()) if player.has_object() else 0
-        if held == int(g):
+        if held == int(g) and not previous_state.players[agent_id].has_object():
             return True
         return None
 
@@ -46,7 +50,8 @@ def place_object_space(length_of_trajectory: int) -> GoalSpace:
     def sampler():
         return ItemCode.ONION
 
-    def fitness(pick_step=None):
+    def fitness(pick_step: int, g: int, end_of_episode: bool, state: OvercookedState, previous_state: OvercookedState,
+                agent_id: int, mdp: OvercookedGridworld):
         if pick_step is None:
             return 0.0
         return 1.0 - (pick_step / max(length_of_trajectory, 1))  # fast = high
@@ -79,10 +84,28 @@ def start_cooking_space(length_of_trajectory: int) -> GoalSpace:
     def sampler():
         return None
 
-    def fitness(pick_step=None):
-        if pick_step is None:
+    def fitness(pick_step: int, g: int, end_of_episode: bool, state: OvercookedState, previous_state: OvercookedState,
+                agent_id: int, mdp: OvercookedGridworld):
+        if end_of_episode:
+            if pick_step is None:
+                return 0.0
+            return 1.0 - (pick_step / max(length_of_trajectory, 1))  # fast = high
+
+        previous_agent: PlayerState = previous_state.players[agent_id]
+        current_agent = state.players[agent_id]
+        if not previous_agent.has_object() or current_agent.has_object():
             return 0.0
-        return 1.0
+
+        if make_pick_object_space(length_of_trajectory).success(agent_id, ItemCode.ONION.value, state, previous_state,
+                                                                mdp):
+            # The agent has picked up an onion
+            return 0.1
+        if place_object_space(length_of_trajectory).success(agent_id, ItemCode.ONION.value, state, previous_state, mdp):
+            # The agent has placed an onion in a pot
+            return 0.1
+
+        return 0
+
 
     def success(agent_id: int, g: int, state: OvercookedState, previous_state: OvercookedState,
                 mdp: OvercookedGridworld):
@@ -106,7 +129,6 @@ def start_cooking_space(length_of_trajectory: int) -> GoalSpace:
             if pot in adjacent_positions:
                 # The agent is adjacent to the cooking pot
                 return True
-
         return False
 
     return GoalSpace("START_COOKING", 1, sampler=sampler, fitness_fn=fitness, success_fn=success)
@@ -116,7 +138,7 @@ def pickup_soup_space(length_of_trajectory: int) -> GoalSpace:
     def sampler():
         return None
 
-    def fitness(pick_step=None):
+    def fitness(pick_step=None, *args):
         if pick_step is None:
             return 0.0
         return 1.0
@@ -137,5 +159,5 @@ def create_goal_space(length_of_trajectory):
         "place_object": place_object_space(length_of_trajectory),
         "pick_object": make_pick_object_space(length_of_trajectory),
         "start_cooking": start_cooking_space(length_of_trajectory),
-        "pickup_soup": pickup_soup_space(length_of_trajectory),
+        # "pickup_soup": pickup_soup_space(length_of_trajectory),
     }

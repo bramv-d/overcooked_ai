@@ -145,8 +145,8 @@ def make_graphs():
         if os.path.exists(path):
             print(f"✅ Found {path}")
             records = load_records(path)
-            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 200)
-            plot_goalspace_distribution(records, f"visualise/stats/goalspace_dist_{ag}.png", 200)
+            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 10)
+            plot_goalspace_distribution(records, f"visualise/stats/goalspace_dist_{ag}.png", 10)
             get_statistics(path)
         else:
             print(f"❌ Could not find {path}")

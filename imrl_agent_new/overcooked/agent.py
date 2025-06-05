@@ -56,6 +56,7 @@ class IMGEPAgent(Agent):
         self.goal_reach_time_step = None
         self.parent_policy: ExperimentRecord | None = None
         self.previous_state: OvercookedState | None = None
+        self.rollout_fitness = 0.0
         # ---------- path planning --------------------------------------
         self.path = []
         super().__init__()
@@ -68,6 +69,7 @@ class IMGEPAgent(Agent):
         self.goal_space_id, self.goal_vec = self.bandit.next_goal()
         self.goal_reach_time_step = None
         self.t = 0
+        self.rollout_fitness = 0.0
         self.path = []
 
         self.use_pi = (random.random() > 0.8)
@@ -107,6 +109,16 @@ class IMGEPAgent(Agent):
                                               self.mdp) and self.goal_reach_time_step is None:
             self.goal_reach_time_step = self.t
             return Action.STAY, {}
+        if self.previous_state:
+            self.rollout_fitness += gs.fitness(
+                pick_step=self.goal_reach_time_step,
+                g=self.goal_vec,
+                end_of_episode=False,
+                state=state,
+                previous_state=self.previous_state,
+                agent_id=self.agent_id,
+                mdp=self.mdp
+            )
 
         if self.path:
             step = self.path.pop(0)
@@ -147,7 +159,16 @@ class IMGEPAgent(Agent):
                                   self.mdp)
 
         gs: GoalSpace = self.G[self.goal_space_id]
-        fitness = gs.fitness(self.goal_reach_time_step)
+        self.rollout_fitness += gs.fitness(
+            pick_step=self.goal_reach_time_step,
+            g=self.goal_vec,
+            end_of_episode=True,
+            state=final_state,
+            previous_state=self.previous_state,
+            agent_id=self.agent_id,
+            mdp=self.mdp
+        )
+
         # intrinsic reward = Δ fitness vs nearest prior experiment
         if len(self.kb) == 0 or not self.parent_policy:
             prev_f = 0.0
@@ -155,12 +176,15 @@ class IMGEPAgent(Agent):
             nearest = self.kb.nearest(self.goal_space_id, self.goal_vec, 10, self.use_pi)
             prev_f = np.mean([r.fitness for r in nearest]) if nearest else 0.0
 
-        r_i = max(0, fitness - prev_f)
+        r_i = max(0, self.rollout_fitness - prev_f)
 
         # Save the amount of records in the knowledge base based on the r_i
         # This follows the idea of neuro evolution where successful policies are recorded more often and bad policies are recorded less often
         record_amount = int(max(1, 10 * r_i))
         rollout_idx = self.kb.buffer[-1].rollout_idx + 1 if self.kb.buffer else 0
+
+        if self.use_pi:
+            self.bandit.update(self.goal_space_id, r_i)
 
         for _ in range(record_amount):
             self.kb.add_record(ExperimentRecord(
@@ -169,16 +193,12 @@ class IMGEPAgent(Agent):
                 goal_space=self.goal_space_id,
                 theta=self.neuro_policy.theta,  # store network parameters
                 outcome=outcome,
-                fitness=fitness,
-                intrinsic_reward=r_i,
+                fitness=self.rollout_fitness,
+                intrinsic_reward=self.bandit.ir_by_space[self.goal_space_id],
                 exploit=self.use_pi,
                 rollout_idx=rollout_idx,
             ))
 
-        if self.use_pi:
-            nearest = self.kb.nearest(self.goal_space_id, self.goal_vec, 10, self.use_pi)
-            avg_r_i = np.mean([r.intrinsic_reward for r in nearest]) if nearest else 0.0
-            self.bandit.update(self.goal_space_id, avg_r_i)
 
     def _get_motion_goals(self, high_level_action: HighLevelActions, state: OvercookedState):
         all_counters = self.mdp.get_counter_locations()
