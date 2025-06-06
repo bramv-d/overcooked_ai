@@ -10,6 +10,7 @@ from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 
 # ---------------------------------------------------------------- settings
+# 17, 18, 20,
 layout_name       = layouts[20]          # any layout string
 
 # ---------------------------------------------------------------- env + agents
@@ -25,14 +26,14 @@ max_dist = max_plan_cost(mp)  # longest path in the layout, used for normalizati
 base_params = {
     "start_orientations": False,
     "wait_allowed": False,
-    "counter_goals": [],  # mdp.terrain_pos_dict["X"],
-    "counter_drop": [],  # mdp.terrain_pos_dict["X"],
-    "counter_pickup": [],  # mdp.terrain_pos_dict["X"],
+    "counter_goals": [mdp.terrain_pos_dict["X"]],
+    "counter_drop": [mdp.terrain_pos_dict["X"]],
+    "counter_pickup": [mdp.terrain_pos_dict["X"]],
     "same_motion_goals": True,
 }
 
 agents = [IMGEPAgent(env, mdp, agent_id, horizon=HORIZON, max_dist=max_dist) for agent_id in range(2)]
-for ag in agents: ag.kb.load_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
+# for ag in agents: ag.kb.load_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
 # ---------------------------------------------------------------- run one roll-out
 state = env.reset()
 

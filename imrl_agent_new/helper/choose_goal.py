@@ -11,7 +11,7 @@ def get_plan(start_pos_and_or, motion_goals, mlam: MediumLevelActionManager):
     min_cost = np.inf
     best_plan = []
     for goal in motion_goals:
-        if not mlam.motion_planner.is_valid_motion_goal(goal):
+        if not mlam.motion_planner.is_valid_motion_start_goal_pair(start_pos_and_or, goal):
             continue
 
         action_plan, _, plan_cost = mlam.motion_planner.get_plan(

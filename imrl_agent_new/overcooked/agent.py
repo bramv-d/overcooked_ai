@@ -98,7 +98,7 @@ class IMGEPAgent(Agent):
     def action(self, state: OvercookedState):
         self.t += 1
 
-        if self.goal_reach_time_step is not None or self.agent_id == 1:
+        if self.goal_reach_time_step is not None:
             legal_actions = list(Action.MOTION_ACTIONS)
             # Pick a random action from the legal actions
             random_action = random.choice(legal_actions)
@@ -132,7 +132,7 @@ class IMGEPAgent(Agent):
         if self.use_pi or self.parent_policy is None:
             greedy = True
         else:
-            greedy = self.parent_policy.intrinsic_reward > 0.0
+            greedy = self.parent_policy.intrinsic_reward > 0.4
 
         token = HighLevelActions(
             self.neuro_policy.select_token(obs_vec, greedy=greedy))
@@ -223,4 +223,6 @@ class IMGEPAgent(Agent):
                 return self.mlam.deliver_soup_actions()
             case HighLevelActions.START_COOKING:
                 return self.mlam.start_cooking_actions(pots_object)
+            case HighLevelActions.GO_COUNTER:
+                return self.mlam.place_obj_on_counter_actions(state)
         return None
