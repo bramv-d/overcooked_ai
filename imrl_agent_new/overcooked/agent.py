@@ -97,7 +97,8 @@ class IMGEPAgent(Agent):
     # ---------------------------------------------------------------- action
     def action(self, state: OvercookedState):
         self.t += 1
-        if self.goal_reach_time_step is not None:
+
+        if self.goal_reach_time_step is not None or self.agent_id == 1:
             legal_actions = list(Action.MOTION_ACTIONS)
             # Pick a random action from the legal actions
             random_action = random.choice(legal_actions)
