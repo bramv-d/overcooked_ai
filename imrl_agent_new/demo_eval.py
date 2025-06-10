@@ -33,11 +33,11 @@ base_params = {
 }
 
 agents = [IMGEPAgent(env, mdp, agent_id, horizon=HORIZON, max_dist=max_dist) for agent_id in range(2)]
-for ag in agents: ag.kb.load_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
+# for ag in agents: ag.kb.load_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
 # ---------------------------------------------------------------- run one roll-out
 state = env.reset()
 
-ROLL_OUTS = 3000
+ROLL_OUTS = 30000
 
 for roll in range(ROLL_OUTS):
     print(roll)

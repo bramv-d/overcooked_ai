@@ -91,7 +91,7 @@ def start_cooking_space(length_of_trajectory: int) -> GoalSpace:
         if end_of_episode:
             if pick_step is None:
                 return 0.0
-            return 1.0 - (pick_step / max(length_of_trajectory, 1))  # fast = high
+            return 1.0 - (pick_step / max(length_of_trajectory, 1)) - 0.2  # fast = high
 
         previous_agent: PlayerState = previous_state.players[agent_id]
         current_agent = state.players[agent_id]

@@ -175,8 +175,6 @@ class IMGEPAgent(Agent):
 
         r_i = max(0.0, self.rollout_fitness - prev_f)
 
-        # Save the amount of records in the knowledge base based on the r_i
-        # This follows the idea of neuro evolution where successful policies are recorded more often and bad policies are recorded less often
         if self.use_pi:
             record_amount = 1
         else:
@@ -187,6 +185,8 @@ class IMGEPAgent(Agent):
         if self.use_pi:
             self.bandit.update(self.goal_space_id, r_i)
 
+        # Save the amount of records in the knowledge base based on the r_i
+        # This follows the idea of neuro evolution where successful policies are recorded more often and bad policies are recorded less often
         for _ in range(record_amount):
             self.kb.add_record(ExperimentRecord(
                 goal=self.goal_vec,
