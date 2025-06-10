@@ -11,7 +11,7 @@ from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 
 # ---------------------------------------------------------------- settings
 # 17, 18, 20,
-layout_name       = layouts[20]          # any layout string
+layout_name = layouts[21]  # any layout string
 
 # ---------------------------------------------------------------- env + agents
 mdp: OvercookedGridworld = OvercookedGridworld.from_layout_name(layout_name)
@@ -33,11 +33,11 @@ base_params = {
 }
 
 agents = [IMGEPAgent(env, mdp, agent_id, horizon=HORIZON, max_dist=max_dist) for agent_id in range(2)]
-# for ag in agents: ag.kb.load_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
+for ag in agents: ag.kb.load_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
 # ---------------------------------------------------------------- run one roll-out
 state = env.reset()
 
-ROLL_OUTS = 10000
+ROLL_OUTS = 3000
 
 for roll in range(ROLL_OUTS):
     print(roll)
@@ -56,7 +56,7 @@ for roll in range(ROLL_OUTS):
 
     # -------- finish roll-out bookkeeping -------------------------------
     for ag in agents:
-        ag.finish_rollout(state, 0)
+        ag.finish_rollout(state, ep_states[0])
 
     if roll == ROLL_OUTS - 1:
         create_gif(ep_states, mdp, roll, True)

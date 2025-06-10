@@ -74,7 +74,6 @@ class IMGEPAgent(Agent):
 
         self.use_pi = (random.random() > 0.8)
 
-        # Get the last 100 policies from the knowledge base with goal space ID self.goal_space_id and goal_vec self.goal_vec
         relevant_policies = self.kb.nearest(
             self.goal_space_id, self.goal_vec, 100)
 
@@ -98,19 +97,14 @@ class IMGEPAgent(Agent):
     def action(self, state: OvercookedState):
         self.t += 1
 
-        if self.goal_reach_time_step is not None:
-            legal_actions = list(Action.MOTION_ACTIONS)
-            # Pick a random action from the legal actions
-            random_action = random.choice(legal_actions)
-            return random_action, {}
-
         gs = self.G[self.goal_space_id]
 
         if self.previous_state and gs.success(self.agent_id, self.goal_vec, state, self.previous_state,
                                               self.mdp) and self.goal_reach_time_step is None:
             self.goal_reach_time_step = self.t
             return Action.STAY, {}
-        if self.previous_state:
+
+        if self.previous_state and self.goal_reach_time_step is None:
             self.rollout_fitness += gs.fitness(
                 pick_step=self.goal_reach_time_step,
                 g=self.goal_vec,
@@ -154,7 +148,7 @@ class IMGEPAgent(Agent):
         return action, {}
 
     # ---------------------------------------------------------------- finish
-    def finish_rollout(self, final_state: OvercookedState, soups_delivered: int):
+    def finish_rollout(self, final_state: OvercookedState, start_state: OvercookedState):
         outcome = extract_outcome(final_state,
                                   final_state.players[self.agent_id],
                                   self.mdp)
@@ -170,18 +164,24 @@ class IMGEPAgent(Agent):
             mdp=self.mdp
         )
 
+        shared_effectance = self.get_shared_effectance(final_state, start_state)
+
         # intrinsic reward = Δ fitness vs nearest prior experiment
         if len(self.kb) == 0 or not self.parent_policy:
             prev_f = 0.0
         else:
-            nearest = self.kb.nearest(self.goal_space_id, self.goal_vec, 10, self.use_pi)
+            nearest = self.kb.nearest(self.goal_space_id, self.goal_vec, 1, self.use_pi)
             prev_f = np.mean([r.fitness for r in nearest]) if nearest else 0.0
 
-        r_i = max(0, self.rollout_fitness - prev_f)
+        r_i = max(0.0, self.rollout_fitness - prev_f)
 
         # Save the amount of records in the knowledge base based on the r_i
         # This follows the idea of neuro evolution where successful policies are recorded more often and bad policies are recorded less often
-        record_amount = int(max(1, 10 * r_i))
+        if self.use_pi:
+            record_amount = 1
+        else:
+            record_amount = max(1, int(10 * r_i))
+
         rollout_idx = self.kb.buffer[-1].rollout_idx + 1 if self.kb.buffer else 0
 
         if self.use_pi:
@@ -189,13 +189,12 @@ class IMGEPAgent(Agent):
 
         for _ in range(record_amount):
             self.kb.add_record(ExperimentRecord(
-                context=np.array([0]),
                 goal=self.goal_vec,
                 goal_space=self.goal_space_id,
-                theta=self.neuro_policy.theta,  # store network parameters
+                theta=self.neuro_policy.theta,
                 outcome=outcome,
                 fitness=self.rollout_fitness,
-                intrinsic_reward=self.bandit.ir_by_space[self.goal_space_id],
+                intrinsic_reward=r_i,
                 exploit=self.use_pi,
                 rollout_idx=rollout_idx,
             ))
@@ -225,4 +224,13 @@ class IMGEPAgent(Agent):
                 return self.mlam.start_cooking_actions(pots_object)
             case HighLevelActions.GO_COUNTER:
                 return self.mlam.place_obj_on_counter_actions(state)
+            case HighLevelActions.WAIT:
+                # If the agent is waiting, return an empty list to indicate no motion goals
+                return []
         return None
+
+    def get_shared_effectance(self, state: OvercookedState, start_state: OvercookedState) -> float:
+        # TODO work on this. Probably something with comparing the start_state and the current state
+        # TODO some stuff should return more than others, especially complicated actions like cooking or serving deserver higher actions
+        objects = state.all_objects_list
+        return 0.0

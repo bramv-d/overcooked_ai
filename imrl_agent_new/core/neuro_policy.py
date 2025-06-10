@@ -13,8 +13,8 @@ class NeuroPolicy:
     def __init__(self, theta: np.ndarray | None = None):
 
         self.inp_dim = 15  # from obs_to_vec()
-        self.hidden_dim = 12
-        self.num_tokens = 9
+        self.hidden_dim = 14
+        self.num_tokens = 10
 
         if theta is None:  # fresh initialization
             W1 = he_init(self.inp_dim, self.hidden_dim)

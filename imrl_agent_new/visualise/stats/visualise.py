@@ -73,7 +73,6 @@ def plot_fitness(records, output_path, smoothing_window):
     ax_f.set_xlabel("Roll-out index")
     ax_f.set_ylabel("Fitness (smoothed)")
     ax_ir.set_ylabel("Intrinsic reward (smoothed)")
-    ax_f.set_ylim(0, 1.05)
     ax_f.set_title("Fitness & Learning-Progress per goal space")
     ax_f.grid(True, which="both", linestyle=":")
 
@@ -130,7 +129,6 @@ def plot_goalspace_distribution(records, output_path, smoothing_window):
     plt.title("Goal-space rollout distribution over time")
     plt.xlabel("Roll-out index")
     plt.ylabel("Proportion (smoothed)")
-    plt.ylim(0, 1.0)
     plt.grid(True, linestyle=":")
     plt.legend(title="Goal Space", loc="upper right")
     plt.tight_layout()
@@ -145,8 +143,8 @@ def make_graphs():
         if os.path.exists(path):
             print(f"✅ Found {path}")
             records = load_records(path)
-            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 20)
-            plot_goalspace_distribution(records, f"visualise/stats/goalspace_dist_{ag}.png", 20)
+            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 10)
+            plot_goalspace_distribution(records, f"visualise/stats/goalspace_dist_{ag}.png", 10)
             get_statistics(path)
         else:
             print(f"❌ Could not find {path}")

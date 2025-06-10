@@ -20,6 +20,7 @@ layouts = [
     "forced_coordination_tomato",
     "inverse_marshmallow_experiment",
     "large_room",
+    "separate_room",
     "long_cook_time",
     "m_shaped_s",
     "marshmallow_experiment",

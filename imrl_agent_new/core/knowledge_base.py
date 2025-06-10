@@ -12,7 +12,6 @@ import numpy as np
 @dataclass
 class ExperimentRecord:
     # High-level information
-    context: np.ndarray  # shape = (C,), holds the context in which the policy was used
     goal: int  # shape = (G,), the goal to reach using the policy
     goal_space: str  # goal space ID, e.g., "PLACE_OBJECT", "PICK_OBJECT", etc.
     theta: np.ndarray  # policy params you executed
