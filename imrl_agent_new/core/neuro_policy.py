@@ -2,6 +2,9 @@
 
 import numpy as np
 
+from imrl_agent_new.helper.high_level_actions import HighLevelActions
+from imrl_agent_new.helper.obs_to_vect import OBS_VEC_SIZE
+
 
 def he_init(fan_in: int, fan_out: int) -> np.ndarray:
     """Kaiming-He init for a linear layer (ReLU)."""
@@ -12,9 +15,9 @@ def he_init(fan_in: int, fan_out: int) -> np.ndarray:
 class NeuroPolicy:
     def __init__(self, theta: np.ndarray | None = None):
 
-        self.inp_dim = 15  # from obs_to_vec()
+        self.inp_dim = OBS_VEC_SIZE  # from obs_to_vec()
         self.hidden_dim = 14
-        self.num_tokens = 10
+        self.num_tokens = len(HighLevelActions)
 
         if theta is None:  # fresh initialization
             W1 = he_init(self.inp_dim, self.hidden_dim)

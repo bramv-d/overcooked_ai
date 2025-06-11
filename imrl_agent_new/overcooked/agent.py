@@ -6,7 +6,7 @@ import random
 import numpy as np
 
 from imrl_agent_new.core.goal_policy import GoalSpacePolicy
-from imrl_agent_new.core.goal_spaces import GoalSpace, create_goal_space
+from imrl_agent_new.core.goal_spaces import Goal, create_goal_space
 from imrl_agent_new.core.knowledge_base import ExperimentRecord, KnowledgeBase
 from imrl_agent_new.core.neuro_policy import NeuroPolicy
 from imrl_agent_new.helper.choose_goal import get_plan
@@ -49,7 +49,6 @@ class IMGEPAgent(Agent):
         self.kb = KnowledgeBase()
         # ---------- per-rollout fields -----------------------------------
         self.goal_space_id: str | None = None
-        self.goal_vec: int | None = None
         self.neuro_policy: NeuroPolicy | None = None
         self.use_pi: bool = False
         self.t: int = 0
@@ -66,7 +65,7 @@ class IMGEPAgent(Agent):
         """Called by Overcooked-AI at episode start."""
         super().reset()
         self.mdp = mdp
-        self.goal_space_id, self.goal_vec = self.bandit.next_goal()
+        self.goal_space_id = self.bandit.next_goal()
         self.goal_reach_time_step = None
         self.t = 0
         self.rollout_fitness = 0.0
@@ -74,14 +73,14 @@ class IMGEPAgent(Agent):
 
         self.use_pi = (random.random() > 0.8)
 
-        relevant_policies = self.kb.nearest(
-            self.goal_space_id, self.goal_vec, 100)
-
-        if not relevant_policies:
+        if not self.kb.nearest(
+                self.goal_space_id, 1):
             # --- explore: create new policy --
             self.neuro_policy = NeuroPolicy()
         elif self.use_pi:
             # --- exploit: clone best policy ----
+            relevant_policies = self.kb.nearest(
+                self.goal_space_id, 50)
             best_idx = np.argmax([r.fitness for r in relevant_policies]) if relevant_policies else 0
             self.parent_policy = relevant_policies[best_idx]
             theta_vec = self.parent_policy.theta
@@ -89,6 +88,18 @@ class IMGEPAgent(Agent):
         else:
             # --- explore:  mutate policy --
             # Pick a random policy from the previous 100 for this exploration loop
+            relevant_policies = []
+            pick_other_policy = random.random() < 0.3
+            if pick_other_policy:  # Pick a random policy from an (other) goal space which is performing well
+                relevant_policies = self.kb.well_performing_policies(
+                    fitness_threshold=0.5,
+                    record_amount=20,
+                    exploit=True
+                )
+            if not relevant_policies:
+                relevant_policies = self.kb.nearest(
+                    self.goal_space_id, 50)
+
             self.parent_policy = random.choice(relevant_policies)
             child_theta = self.parent_policy.theta + np.random.normal(0, 0.1, self.parent_policy.theta.shape)
             self.neuro_policy = NeuroPolicy(theta=child_theta)
@@ -99,7 +110,7 @@ class IMGEPAgent(Agent):
 
         gs = self.G[self.goal_space_id]
 
-        if self.previous_state and gs.success(self.agent_id, self.goal_vec, state, self.previous_state,
+        if self.previous_state and gs.success(self.agent_id, state, self.previous_state,
                                               self.mdp) and self.goal_reach_time_step is None:
             self.goal_reach_time_step = self.t
             return Action.STAY, {}
@@ -107,7 +118,6 @@ class IMGEPAgent(Agent):
         if self.previous_state and self.goal_reach_time_step is None:
             self.rollout_fitness += gs.fitness(
                 pick_step=self.goal_reach_time_step,
-                g=self.goal_vec,
                 end_of_episode=False,
                 state=state,
                 previous_state=self.previous_state,
@@ -120,7 +130,7 @@ class IMGEPAgent(Agent):
             return self.return_action(step, state)
 
         obs_vec = obs_to_vec(state, self.mdp, self.mp,
-                             self.agent_id, self.max_dist)
+                             self.agent_id)
 
         # ----------------- high-level action selection ----------------------
         if self.use_pi or self.parent_policy is None:
@@ -153,10 +163,9 @@ class IMGEPAgent(Agent):
                                   final_state.players[self.agent_id],
                                   self.mdp)
 
-        gs: GoalSpace = self.G[self.goal_space_id]
+        gs: Goal = self.G[self.goal_space_id]
         self.rollout_fitness += gs.fitness(
             pick_step=self.goal_reach_time_step,
-            g=self.goal_vec,
             end_of_episode=True,
             state=final_state,
             previous_state=self.previous_state,
@@ -170,7 +179,7 @@ class IMGEPAgent(Agent):
         if len(self.kb) == 0 or not self.parent_policy:
             prev_f = 0.0
         else:
-            nearest = self.kb.nearest(self.goal_space_id, self.goal_vec, 1, self.use_pi)
+            nearest = self.kb.nearest(self.goal_space_id, 1, self.use_pi)
             prev_f = np.mean([r.fitness for r in nearest]) if nearest else 0.0
 
         r_i = max(0.0, self.rollout_fitness - prev_f)
@@ -189,7 +198,6 @@ class IMGEPAgent(Agent):
         # This follows the idea of neuro evolution where successful policies are recorded more often and bad policies are recorded less often
         for _ in range(record_amount):
             self.kb.add_record(ExperimentRecord(
-                goal=self.goal_vec,
                 goal_space=self.goal_space_id,
                 theta=self.neuro_policy.theta,
                 outcome=outcome,

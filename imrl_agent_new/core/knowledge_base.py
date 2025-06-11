@@ -12,7 +12,6 @@ import numpy as np
 @dataclass
 class ExperimentRecord:
     # High-level information
-    goal: int  # shape = (G,), the goal to reach using the policy
     goal_space: str  # goal space ID, e.g., "PLACE_OBJECT", "PICK_OBJECT", etc.
     theta: np.ndarray  # policy params you executed
     outcome: np.ndarray  # shape = (O,), derived from τ, the outcome of the performed policy
@@ -49,14 +48,14 @@ class KnowledgeBase:
         """Insert a new experiment and flag index for rebuild."""
         self.buffer.append(rec)
 
-    def nearest(self, goal_space: str, goal_vector_id: int, k: int, exploit: bool | None = None) -> List[
+    def nearest(self, goal_space: str, k: int, exploit: bool | None = None) -> List[
                                                                                                         ExperimentRecord] | None:
         """
         Return the db_ids(s) of the most similar past experiment.
         """
         nearest = []
         for index, g in enumerate(reversed(self.buffer)):  # Iterate in reverse order
-            if g.goal_space == goal_space and g.goal == goal_vector_id and (exploit is None or g.exploit == exploit):
+            if g.goal_space == goal_space and (exploit is None or g.exploit == exploit):
                 nearest.append(g)
             if len(nearest) == k:
                 break
@@ -64,6 +63,19 @@ class KnowledgeBase:
 
     def __len__(self):
         return len(self.buffer)
+
+    def well_performing_policies(self, fitness_threshold, record_amount, exploit) -> List[ExperimentRecord]:
+        """
+        Return a list of records with fitness above the threshold
+        """
+        well_performing = []
+        for record in reversed(self.buffer):
+            if record.fitness >= fitness_threshold and record.exploit == exploit:
+                well_performing.append(record)
+            if len(well_performing) == record_amount:
+                break
+        return well_performing
+
 
     # --- save & load ------------------------------------------------------------
     def save_buffer(self, path: str):

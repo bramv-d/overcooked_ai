@@ -1,7 +1,7 @@
 # goal_policy.py
 import random
 from collections import defaultdict
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
 import numpy as np
 
@@ -33,9 +33,9 @@ class GoalSpacePolicy:
         # running exponential averages of intrinsic reward
         self.ir_by_space = defaultdict(float, {space_id: 0 for space_id in self.spaces})
     # ---------------------------------------------------------------- PUBLIC
-    def next_goal(self) -> Tuple[str, Any]:
+    def next_goal(self) -> str:
         """
-        Returns (space_id, goal_vector g).
+        Returns (space_id).
 
         """
         # ---------- choose a space -----------------------------------------
@@ -47,8 +47,7 @@ class GoalSpacePolicy:
             # Use isclose to handle float comparisons
             best_spaces = [k for k, v in ir_values.items() if np.isclose(v, max_val)]
             space_id = random.choice(best_spaces)
-        g = self.spaces[space_id].sample()
-        return space_id, g
+        return space_id
 
     def update(self, space_id: str, intrinsic_reward: float):
         """

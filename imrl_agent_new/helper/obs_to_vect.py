@@ -5,51 +5,47 @@ from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedS
 from overcooked_ai_py.planning.planners import MotionPlanner
 
 
+def is_reachable(mp: MotionPlanner, pos_and_or, target_locations) -> float:
+    """Return 1.0 if any target location is reachable, else 0.0."""
+    return 1.0 if mp.min_cost_to_feature(pos_and_or, target_locations) != np.inf else 0.0
+
+
+OBS_VEC_SIZE = len(ItemCode) + 8
+
 def obs_to_vec(
         state: OvercookedState,
         mdp: OvercookedGridworld,
         mp: MotionPlanner,
         player_id: int,
-        diam: int  # longest path in the layout, used for normalization
 ) -> np.ndarray:
-    w, h = mdp.width, mdp.height
     me: PlayerState = state.players[player_id]
-    px, py = me.position
+    pot_states = mdp.get_pot_states(state)
+
+    # Held object one-hot
     held = item_to_int(me.get_object()) if me.has_object() else 0
     held_onehot = np.eye(len(ItemCode), dtype=np.float32)[held]  # shape (5,)
-    pot_states = mdp.get_pot_states(state)
-    # ----------- pre-computed distances (already integers) ------------------
-    # Could include things like "is_potting_useful" but not sure if that is nice
-    d_onion = mp.min_cost_to_feature(me.pos_and_or, mdp.get_onion_dispenser_locations())
-    d_tomato = mp.min_cost_to_feature(me.pos_and_or, mdp.get_tomato_dispenser_locations())
-    d_pots_cooking = mp.min_cost_to_feature(me.pos_and_or, mdp.get_cooking_pots(pot_states))
-    d_empty_pots = mp.min_cost_to_feature(me.pos_and_or, mdp.get_empty_pots(mdp.get_pot_states(state)))
-    d_ready_pots = mp.min_cost_to_feature(me.pos_and_or, mdp.get_ready_pots(mdp.get_pot_states(state)))
-    d_full_not_cooking_pots = mp.min_cost_to_feature(me.pos_and_or,
-                                                     mdp.get_full_but_not_cooking_pots(mdp.get_pot_states(state)))
-    d_counter = mp.min_cost_to_feature(me.pos_and_or, mdp.get_empty_counter_locations(state))
-    d_serving = mp.min_cost_to_feature(me.pos_and_or, mdp.get_serving_locations())
 
-    # -------------- partner relative offset (normalised) --------------------
-    partner = state.players[1 - player_id]
-    rel_dx = np.clip(partner.position[0] - px, -(w - 1), w - 1) / (w - 1)  # ∈[-1,1]
-    rel_dy = np.clip(partner.position[1] - py, -(h - 1), h - 1) / (h - 1)
-    rel_dx = (rel_dx + 1) / 2  # shift to [0,1]
-    rel_dy = (rel_dy + 1) / 2
+    # Binary reachable features
+    d_onion = is_reachable(mp, me.pos_and_or, mdp.get_onion_dispenser_locations())
+    d_tomato = is_reachable(mp, me.pos_and_or, mdp.get_tomato_dispenser_locations())
+    d_pots_cooking = is_reachable(mp, me.pos_and_or, mdp.get_cooking_pots(pot_states))
+    d_empty_pots = is_reachable(mp, me.pos_and_or, mdp.get_empty_pots(pot_states))
+    d_ready_pots = is_reachable(mp, me.pos_and_or, mdp.get_ready_pots(pot_states))
+    d_full_not_cooking_pots = is_reachable(mp, me.pos_and_or, mdp.get_full_but_not_cooking_pots(pot_states))
+    d_counter = is_reachable(mp, me.pos_and_or, mdp.get_empty_counter_locations(state))
+    d_serving = is_reachable(mp, me.pos_and_or, mdp.get_serving_locations())
 
-    # -------------- assemble feature vector ---------------------------------
+    # Assemble feature vector
     feat = np.array([
-        *held_onehot,  # 0-4 held object one-hot, unpack using *
-        min(d_onion, diam) / diam,  # 5 dist to onion dispenser
-        min(d_tomato, diam) / diam,  # 6 dist to tomato dispenser
-        min(d_pots_cooking, diam) / diam,  # 7 dist to cooking pot
-        min(d_empty_pots, diam) / diam,  # 8 dist to empty pot
-        min(d_full_not_cooking_pots, diam) / diam,  # 9 dist to full but not cooking pot
-        min(d_ready_pots, diam) / diam,  # 10 dist to ready pot
-        min(d_counter, diam) / diam,  # 11 dist to empty counter
-        min(d_serving, diam) / diam,  # 12 dist to serving/pass window
-        rel_dx,  # 13 partner dx normalised
-        rel_dy,  # 14 partner dy normalised
+        *held_onehot,  # (5,)
+        d_onion,  # (1,)
+        d_tomato,
+        d_pots_cooking,
+        d_empty_pots,
+        d_full_not_cooking_pots,
+        d_ready_pots,
+        d_counter,
+        d_serving,
     ], dtype=np.float32)
 
-    return feat  # shape = (15,)
+    return feat  # shape = (5 + 8,) = (13,)
