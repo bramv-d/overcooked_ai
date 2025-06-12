@@ -142,17 +142,7 @@ def pickup_soup_space(length_of_trajectory: int) -> Goal:
                 return -0.2
 
             # Detect bowl pickup
-            if current_held == ItemCode.DISH.value:
-                # The agent is next to the pickup location
-
-                adjacency_features = mdp.get_adjacent_features(current_agent)
-                adjacent_positions = {feature[0] for feature in adjacency_features}
-                # loop through the current_cooking_pots and check if the agent is next to a pot
-                for pot in mdp.get_cooking_pots(mdp.get_pot_states(state)):
-                    if pot in adjacent_positions:
-                        # The agent is next to a cooking pot
-                        return 0.05
-
+            if current_held != 0 and current_held.name == 'dish':
                 # The agent is holding a dish
                 return 0.02
 
@@ -170,8 +160,7 @@ def pickup_soup_space(length_of_trajectory: int) -> Goal:
                 mdp: OvercookedGridworld):
         player: PlayerState = state.players[agent_id]
         held = player.get_object() if player.has_object() else 0
-        if held == ItemCode.SOUP:
-            print("Agent {} successfully picked up soup.".format(agent_id))
+        if held and held.name == 'soup':
             return True
         return False
 
