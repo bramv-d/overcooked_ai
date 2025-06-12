@@ -101,7 +101,8 @@ class IMGEPAgent(Agent):
                     self.goal_space_id, 50)
 
             self.parent_policy = random.choice(relevant_policies)
-            child_theta = self.parent_policy.theta + np.random.normal(0, 0.1, self.parent_policy.theta.shape)
+            adaptive_noise = 0.1 / (self.parent_policy.intrinsic_reward + 0.1)  # more noise when progress is low
+            child_theta = self.parent_policy.theta + np.random.normal(0, adaptive_noise, self.parent_policy.theta.shape)
             self.neuro_policy = NeuroPolicy(theta=child_theta)
 
     # ---------------------------------------------------------------- action
@@ -173,7 +174,6 @@ class IMGEPAgent(Agent):
             mdp=self.mdp
         )
 
-        shared_effectance = self.get_shared_effectance(final_state, start_state)
 
         # intrinsic reward = Δ fitness vs nearest prior experiment
         if len(self.kb) == 0 or not self.parent_policy:
@@ -236,9 +236,3 @@ class IMGEPAgent(Agent):
                 # If the agent is waiting, return an empty list to indicate no motion goals
                 return []
         return None
-
-    def get_shared_effectance(self, state: OvercookedState, start_state: OvercookedState) -> float:
-        # TODO work on this. Probably something with comparing the start_state and the current state
-        # TODO some stuff should return more than others, especially complicated actions like cooking or serving deserver higher actions
-        objects = state.all_objects_list
-        return 0.0

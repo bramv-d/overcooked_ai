@@ -16,7 +16,7 @@ class NeuroPolicy:
     def __init__(self, theta: np.ndarray | None = None):
 
         self.inp_dim = OBS_VEC_SIZE  # from obs_to_vec()
-        self.hidden_dim = 14
+        self.hidden_dim = 64
         self.num_tokens = len(HighLevelActions)
 
         if theta is None:  # fresh initialization
