@@ -10,7 +10,7 @@ class Goal:
 
 
 def pick_object_space(length_of_trajectory: int, name, object_code) -> Goal:
-    def fitness(pick_step: int, end_of_episode: bool, state: OvercookedState, previous_state: OvercookedState,
+    def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
                 agent_id: int, mdp: OvercookedGridworld):
         if pick_step is None:
             return 0.0
@@ -28,12 +28,11 @@ def pick_object_space(length_of_trajectory: int, name, object_code) -> Goal:
 
 
 def place_object_space(length_of_trajectory: int, name, object_code) -> Goal:
-    def fitness(pick_step: int, end_of_episode: bool, state: OvercookedState, previous_state: OvercookedState,
+    def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
                 agent_id: int, mdp: OvercookedGridworld):
         if pick_step is None:
             return 0.0
         return 1.0 - (pick_step / max(length_of_trajectory, 1))  # fast = high
-
 
     def success(agent_id: int, state: OvercookedState, previous_state: OvercookedState,
                 mdp: OvercookedGridworld):
@@ -68,24 +67,25 @@ def start_cooking_space(length_of_trajectory: int) -> Goal:
     pick_onion_goal = pick_object_space(length_of_trajectory, "PICK_ONION", ItemCode.ONION.value)
     place_onion_goal = place_object_space(length_of_trajectory, "PICK_ONION", ItemCode.ONION.value)
 
-    def fitness(pick_step: int, end_of_episode: bool, state: OvercookedState, previous_state: OvercookedState,
+    def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
                 agent_id: int, mdp: OvercookedGridworld):
-        if end_of_episode:
-            if pick_step is None:
-                return 0.0
-            return 1.0 - (pick_step / max(length_of_trajectory, 1)) - 0.2  # fast = high
-
+        previous_cooking_pots = set(mdp.get_cooking_pots(mdp.get_pot_states(previous_state)))  # set of positions
+        current_cooking_pots = set(mdp.get_cooking_pots(mdp.get_pot_states(state)))  # set of positions
+        # Get positions adjacent to the agent (CURRENT state)
         previous_agent: PlayerState = previous_state.players[agent_id]
-        current_agent = state.players[agent_id]
-        if not previous_agent.has_object() or current_agent.has_object():
-            return 0.0
+        adjacent_features = mdp.get_adjacent_features(previous_agent)
+        adjacent_positions = {feature[0] for feature in adjacent_features}  # convert to set for fast lookup
+        # Check: any NEW pot that started cooking, AND agent is adjacent to it
+        new_cooking_pots = current_cooking_pots - previous_cooking_pots  # set difference
 
-        if pick_onion_goal.success(agent_id, state, previous_state, mdp):
-            # The agent has picked up an onion
-            return 0.1
-        if place_onion_goal.success(agent_id, state, previous_state, mdp):
-            # The agent has placed an onion in a pot
-            return 0.1
+        for pot_pos in new_cooking_pots:
+            if pot_pos in adjacent_positions:
+                held = state.get_object(pot_pos)
+
+                # Final reward for successful pickup
+                if not held or held.name != 'soup':
+                    return 0.0
+                return held.value / 65
 
         return 0
 
@@ -116,45 +116,34 @@ def pickup_soup_space(length_of_trajectory: int) -> Goal:
     pick_dish_goal = pick_object_space(length_of_trajectory, "PICK_DISH", ItemCode.DISH.value)
     pick_onion_goal = pick_object_space(length_of_trajectory, "PICK_ONION", ItemCode.ONION.value)
 
-    def fitness(pick_step: int, end_of_episode: bool, state: OvercookedState, previous_state: OvercookedState,
+    def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
                 agent_id: int, mdp: OvercookedGridworld):
         # Phase 1: Start cooking → use start_cooking_goal's fitness
-        if not end_of_episode:
-            # Check if cooking has started
-            current_cooking_pots = set(mdp.get_cooking_pots(mdp.get_pot_states(state)))
-            cooking_started = len(current_cooking_pots) > 0
-
-            # If cooking not started yet → use start_cooking fitness
-            if not cooking_started:
-                return start_cooking_goal.fitness(pick_step, end_of_episode, state, previous_state,
-                                                  agent_id, mdp)
-
-            # Phase 2: cooking started → check if agent picked up bowl
-            previous_agent: PlayerState = previous_state.players[agent_id]
-            current_agent: PlayerState = state.players[agent_id]
-
-            previous_held = previous_agent.get_object() if previous_agent.has_object() else 0
-            current_held = current_agent.get_object() if current_agent.has_object() else 0
-
-            # Punish picking up something other than a dish
-            if pick_onion_goal.success(agent_id, state, previous_state, mdp):
-                # The agent has picked up an onion
-                return -0.2
-
-            # Detect bowl pickup
-            if current_held != 0 and current_held.name == 'dish':
-                # The agent is holding a dish
-                return 0.02
-
-            # Otherwise, no reward at this step
-            return 0.0
-
-        # End of episode handling
-        if end_of_episode and pick_step is None:
-            return 0.0
+        # Check if cooking has started
+        current_cooking_pots = set(mdp.get_cooking_pots(mdp.get_pot_states(state)))
+        cooking_started = len(current_cooking_pots) > 0
+        player: PlayerState = state.players[agent_id]
+        held = player.get_object() if player.has_object() else 0
 
         # Final reward for successful pickup
-        return 1.0 - (pick_step / max(length_of_trajectory, 1)) - 0.2
+        if held and held.name == 'soup':
+            return held.value / 65  # Normalize by max soup value (65)
+
+        if not cooking_started:
+            return start_cooking_goal.fitness(pick_step, state, previous_state,
+                                              agent_id, mdp)
+        # Punish picking up something other than a dish
+        if pick_onion_goal.success(agent_id, state, previous_state, mdp):
+            # The agent has picked up an onion
+            return -0.2
+
+        # Detect bowl pickup
+        if pick_dish_goal.success(agent_id, state, previous_state, mdp):
+            # The agent is holding a dish
+            return 0.2
+        return 0.0  # No soup picked up yet
+
+
 
     def success(agent_id: int, state: OvercookedState, previous_state: OvercookedState,
                 mdp: OvercookedGridworld):

@@ -25,21 +25,16 @@ def moving_average(values, window_size):
 
 # ------------------ plot function ----------------------------
 
-def plot_fitness(records, output_path, smoothing_window):
+def plot_fitness(records, output_path, smoothing_window, goal_space_colors):
     fitness_by_space = defaultdict(list)
     ir_by_space = defaultdict(list)
 
     for rec in records:
         if rec.exploit:
             goal_space = getattr(rec, "goal_space", None)
-            # goal = getattr(rec, "goal", str(rec.goal))
             label = goal_space
             fitness_by_space[label].append((rec.rollout_idx, rec.fitness))
             ir_by_space[label].append((rec.rollout_idx, rec.intrinsic_reward))
-
-    for label, records in fitness_by_space.items():
-        rollout_idxs = sorted(idx for idx, _ in records)
-        print(f"{label} starts at rollout {rollout_idxs[0]}")
 
     if not fitness_by_space:
         print("❌ No fitness data found.")
@@ -49,9 +44,7 @@ def plot_fitness(records, output_path, smoothing_window):
     ax_f = plt.gca()
     ax_ir = ax_f.twinx()
 
-    colors = plt.cm.tab10.colors
-
-    for idx, label in enumerate(fitness_by_space):
+    for label in sorted(fitness_by_space):
         # sort by rollout index to ensure lines are smooth
         fitness_sorted = sorted(fitness_by_space[label])
         ir_sorted = sorted(ir_by_space[label])
@@ -67,8 +60,10 @@ def plot_fitness(records, output_path, smoothing_window):
         x_fit = x_fit[len(x_fit) - len(y_fit_smooth):]
         x_ir = x_ir[len(x_ir) - len(y_ir_smooth):]
 
-        ax_f.plot(x_fit, y_fit_smooth, color=colors[idx % 10], label=f"{label} fitness")
-        ax_ir.plot(x_ir, y_ir_smooth, color=colors[idx % 10], linestyle=":", label=f"{label} IR")
+        color = goal_space_colors[label]
+
+        ax_f.plot(x_fit, y_fit_smooth, color=color, label=f"{label} fitness")
+        ax_ir.plot(x_ir, y_ir_smooth, color=color, linestyle=":", label=f"{label} IR")
 
     ax_f.set_xlabel("Roll-out index")
     ax_f.set_ylabel("Fitness (smoothed)")
@@ -87,16 +82,16 @@ def plot_fitness(records, output_path, smoothing_window):
 
 from collections import defaultdict
 
+import math
 
-def plot_goalspace_distribution(records, output_path, smoothing_window):
-    """Plot the % of rollouts per goal space over time."""
-    goal_counts = defaultdict(list)
+
+def plot_goalspace_distribution(records, output_path, num_bins, goal_space_colors):
+    goal_counts_per_bin = defaultdict(list)
 
     # STEP 0: deduplicate rollout indices
     seen = {}
     for rec in records:
-        if rec.exploit:
-            seen[rec.rollout_idx] = rec  # keeps the *last* per rollout_idx
+        seen[rec.rollout_idx] = rec
 
     # STEP 1: Tally rollout counts
     per_rollout = defaultdict(lambda: defaultdict(int))
@@ -110,30 +105,54 @@ def plot_goalspace_distribution(records, output_path, smoothing_window):
     all_idxs = sorted(all_idxs)
     all_spaces = sorted({space for counts in per_rollout.values() for space in counts})
 
-    # 2. For each goal space, collect a % per rollout index
-    for space in all_spaces:
-        percentages = []
-        for i in all_idxs:
-            total = sum(per_rollout[i].values())
-            pct = per_rollout[i][space] / total if total > 0 else 0
-            percentages.append(pct)
-        # 3. Smooth and store
-        goal_counts[space] = moving_average(percentages, smoothing_window)
+    # STEP 2: Compute bin size
+    total_rollouts = len(all_idxs)
+    bin_size = math.ceil(total_rollouts / num_bins)
 
-    # 4. Plotting
-    plt.figure(figsize=(11, 5))
-    for idx, (space, y_vals) in enumerate(goal_counts.items()):
-        x_vals = all_idxs[len(all_idxs) - len(y_vals):]
-        plt.plot(x_vals, y_vals, label=space, color=plt.cm.tab10(idx))
+    # STEP 3: Bin the rollouts
+    bins = []
+    current_bin = []
+    for idx in all_idxs:
+        current_bin.append(idx)
+        if len(current_bin) == bin_size:
+            bins.append(current_bin)
+            current_bin = []
+    if current_bin:
+        bins.append(current_bin)
 
-    plt.title("Goal-space rollout distribution over time")
-    plt.xlabel("Roll-out index")
-    plt.ylabel("Proportion (smoothed)")
-    plt.grid(True, linestyle=":")
+    # STEP 4: For each bin, compute % of each goal space
+    for bin_idxs in bins:
+        total_counts = defaultdict(int)
+        total_in_bin = 0
+        for idx in bin_idxs:
+            for space in all_spaces:
+                total_counts[space] += per_rollout[idx][space]
+            total_in_bin += sum(per_rollout[idx].values())
+
+        for space in all_spaces:
+            pct = total_counts[space] / total_in_bin if total_in_bin > 0 else 0
+            goal_counts_per_bin[space].append(pct)
+
+    # STEP 5: Plot stacked bar chart
+    x_vals = np.arange(len(bins))
+    bottom_vals = np.zeros(len(bins))
+
+    plt.figure(figsize=(12, 6))
+    for space in sorted(all_spaces):
+        y_vals = goal_counts_per_bin[space]
+        color = goal_space_colors[space]
+        plt.bar(x_vals, y_vals, bottom=bottom_vals, label=space, color=color)
+        bottom_vals += y_vals
+
+    plt.title(f"Goal-space rollout distribution ({num_bins} bins)")
+    plt.xlabel(f"Bins (variable size: ~{bin_size} rollouts per bin)")
+    plt.ylabel("Proportion per bin")
+    plt.xticks(ticks=x_vals, labels=[f"{bin_idxs[0]}-{bin_idxs[-1]}" for bin_idxs in bins], rotation=45, ha='right')
+    plt.grid(axis='y', linestyle=":")
     plt.legend(title="Goal Space", loc="upper right")
     plt.tight_layout()
     plt.savefig(output_path)
-    print(f"✅ Saved distribution plot to {output_path}")
+    print(f"✅ Saved stacked bar distribution plot to {output_path}")
 
 
 # ------------------ load & run -------------------------------
@@ -143,11 +162,20 @@ def make_graphs():
         if os.path.exists(path):
             print(f"✅ Found {path}")
             records = load_records(path)
-            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 10)
-            plot_goalspace_distribution(records, f"visualise/stats/goalspace_dist_{ag}.png", 10)
+
+            # 1️⃣ Collect all goal spaces
+            all_spaces = sorted({rec.goal_space for rec in records if rec.exploit})
+
+            # 2️⃣ Build consistent color map
+            goal_space_colors = get_goal_space_colors(all_spaces)
+
+            # 3️⃣ Plot with consistent colors
+            plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 5, goal_space_colors)
+            plot_goalspace_distribution(records, f"visualise/stats/goalspace_dist_{ag}.png", 5, goal_space_colors)
             get_statistics(path)
         else:
             print(f"❌ Could not find {path}")
+
 
 
 def get_statistics(pickle_path):
@@ -193,3 +221,12 @@ def get_statistics(pickle_path):
     print("Average intrinsic reward per goal space:")
     for space, avg in avg_ir_by_space.items():
         print(f"  • {space:<15} : {avg:.4f}")
+
+
+def get_goal_space_colors(all_spaces):
+    """Assign consistent colors to goal spaces."""
+    colors = plt.cm.tab10.colors
+    color_map = {}
+    for idx, space in enumerate(sorted(all_spaces)):
+        color_map[space] = colors[idx % len(colors)]
+    return color_map

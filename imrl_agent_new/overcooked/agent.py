@@ -6,7 +6,7 @@ import random
 import numpy as np
 
 from imrl_agent_new.core.goal_policy import GoalSpacePolicy
-from imrl_agent_new.core.goal_spaces import Goal, create_goal_space
+from imrl_agent_new.core.goal_spaces import create_goal_space
 from imrl_agent_new.core.knowledge_base import ExperimentRecord, KnowledgeBase
 from imrl_agent_new.core.neuro_policy import NeuroPolicy
 from imrl_agent_new.helper.choose_goal import get_plan
@@ -87,7 +87,6 @@ class IMGEPAgent(Agent):
             self.neuro_policy = NeuroPolicy(theta=theta_vec)
         else:
             # --- explore:  mutate policy --
-            # Pick a random policy from the previous 100 for this exploration loop
             relevant_policies = []
             pick_other_policy = random.random() < 0.3
             if pick_other_policy:  # Pick a random policy from an (other) goal space which is performing well
@@ -114,12 +113,10 @@ class IMGEPAgent(Agent):
         if self.previous_state and gs.success(self.agent_id, state, self.previous_state,
                                               self.mdp) and self.goal_reach_time_step is None:
             self.goal_reach_time_step = self.t
-            return Action.STAY, {}
 
-        if self.previous_state and self.goal_reach_time_step is None:
+        if self.previous_state and (self.goal_reach_time_step is None or self.t == self.goal_reach_time_step):
             self.rollout_fitness += gs.fitness(
                 pick_step=self.goal_reach_time_step,
-                end_of_episode=False,
                 state=state,
                 previous_state=self.previous_state,
                 agent_id=self.agent_id,
@@ -163,16 +160,6 @@ class IMGEPAgent(Agent):
         outcome = extract_outcome(final_state,
                                   final_state.players[self.agent_id],
                                   self.mdp)
-
-        gs: Goal = self.G[self.goal_space_id]
-        self.rollout_fitness += gs.fitness(
-            pick_step=self.goal_reach_time_step,
-            end_of_episode=True,
-            state=final_state,
-            previous_state=self.previous_state,
-            agent_id=self.agent_id,
-            mdp=self.mdp
-        )
 
 
         # intrinsic reward = Δ fitness vs nearest prior experiment
