@@ -11,7 +11,7 @@ from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 
 # ---------------------------------------------------------------- settings
 # 17, 18, 20, 21
-layout_name = layouts[21]  # any layout string
+layout_name = layouts[20]  # any layout string
 
 # ---------------------------------------------------------------- env + agents
 mdp: OvercookedGridworld = OvercookedGridworld.from_layout_name(layout_name)
@@ -28,7 +28,7 @@ for ag in agents: ag.kb.load_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".
 # ---------------------------------------------------------------- run one roll-out
 state = env.reset()
 
-ROLL_OUTS = 5000
+ROLL_OUTS = 2000
 
 for roll in range(ROLL_OUTS):
     print(roll)
