@@ -28,7 +28,7 @@ for ag in agents: ag.kb.load_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".
 # ---------------------------------------------------------------- run one roll-out
 state = env.reset()
 
-ROLL_OUTS = 100
+ROLL_OUTS = 5000
 
 for roll in range(ROLL_OUTS):
     print(roll)
