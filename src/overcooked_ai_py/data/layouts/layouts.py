@@ -21,6 +21,7 @@ layouts = [
     "inverse_marshmallow_experiment",
     "large_room",
     "separate_room",
+    "collaborate_room",
     "long_cook_time",
     "m_shaped_s",
     "marshmallow_experiment",

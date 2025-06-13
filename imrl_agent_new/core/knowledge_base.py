@@ -14,9 +14,9 @@ class ExperimentRecord:
     # High-level information
     goal_space: str  # goal space ID, e.g., "PLACE_OBJECT", "PICK_OBJECT", etc.
     theta: np.ndarray  # policy params you executed
-    outcome: np.ndarray  # shape = (O,), derived from τ, the outcome of the performed policy
     fitness: float
     intrinsic_reward: float
+    shared_episode_reward: float  # shared reward for the episode, used for multi-agent
     exploit: bool = False  # True if this was an exploit step, False if it was exploration
     rollout_idx: int = 0  # episode number, used to track the order of experiments
 

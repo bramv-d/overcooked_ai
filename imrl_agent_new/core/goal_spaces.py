@@ -143,8 +143,6 @@ def pickup_soup_space(length_of_trajectory: int) -> Goal:
             return 0.2
         return 0.0  # No soup picked up yet
 
-
-
     def success(agent_id: int, state: OvercookedState, previous_state: OvercookedState,
                 mdp: OvercookedGridworld):
         player: PlayerState = state.players[agent_id]
@@ -155,6 +153,26 @@ def pickup_soup_space(length_of_trajectory: int) -> Goal:
 
     return Goal("PICKUP_SOUP", fitness_fn=fitness, success_fn=success)
 
+
+def deliver_soup_space(length_of_trajectory: int) -> Goal:
+    pickup_soup_goal = pickup_soup_space(length_of_trajectory)
+
+    # Goal: deliver a soup to a counter; reward falls as delivery time ↑.
+    # This goalspace is agent independent, so it the agent can collaborate with other agents to deliver soup.
+    def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
+                agent_id: int, mdp: OvercookedGridworld):
+        gathered_fitness = pickup_soup_goal.fitness(pick_step, state, previous_state, agent_id, mdp)
+        gathered_fitness += pickup_soup_goal.fitness(pick_step, state, previous_state, 1 - agent_id, mdp)
+        return gathered_fitness
+
+    def success(agent_id: int, state: OvercookedState, previous_state: OvercookedState,
+                mdp: OvercookedGridworld):
+        player: PlayerState = state.players[agent_id]
+        held = player.get_object() if player.has_object() else 0
+        mdp.get_serving_locations()
+        return False
+
+    return Goal("DELIVER_SOUP", fitness_fn=fitness, success_fn=success)
 
 def create_goal_space(length_of_trajectory: int) -> dict[str, Goal]:
     """
@@ -167,5 +185,6 @@ def create_goal_space(length_of_trajectory: int) -> dict[str, Goal]:
         "PICK_DISH": pick_object_space(length_of_trajectory, "PICK_DISH", ItemCode.DISH.value),
         "PLACE_ONION": place_object_space(length_of_trajectory, "PLACE_ONION", ItemCode.ONION.value),
         "START_COOKING": start_cooking_space(length_of_trajectory),
-        "PICKUP_SOUP": pickup_soup_space(length_of_trajectory)
+        "PICKUP_SOUP": pickup_soup_space(length_of_trajectory),
+        # "DELIVER_SOUP": deliver_soup_space(length_of_trajectory)
     }

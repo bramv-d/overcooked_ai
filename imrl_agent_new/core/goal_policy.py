@@ -32,12 +32,17 @@ class GoalSpacePolicy:
 
         # running exponential averages of intrinsic reward
         self.ir_by_space = defaultdict(float, {space_id: 0 for space_id in self.spaces})
+
+        self.shared_reward_by_space = defaultdict(float, {space_id: 0 for space_id in self.spaces})
+
     # ---------------------------------------------------------------- PUBLIC
-    def next_goal(self) -> str:
+    def next_goal(self, shared_episode) -> str:
         """
         Returns (space_id).
-
         """
+        if shared_episode:
+            return max(self.shared_reward_by_space, key=self.shared_reward_by_space.get)
+
         # ---------- choose a space -----------------------------------------
         if random.random() < self.epsilon or not self.ir_by_space:
             space_id = random.choice(list(self.spaces))           # pure explore
@@ -49,9 +54,12 @@ class GoalSpacePolicy:
             space_id = random.choice(best_spaces)
         return space_id
 
-    def update(self, space_id: str, intrinsic_reward: float):
+    def update(self, space_id: str, intrinsic_reward: float, shared_episode_reward: float):
         """
         Update EMA of learning progress for the given goal space.
         """
-        old = self.ir_by_space.get(space_id, intrinsic_reward)
-        self.ir_by_space[space_id] = old + self.alpha * (intrinsic_reward - old)
+        old_ir = self.ir_by_space.get(space_id)
+        old_shared_reward = self.shared_reward_by_space.get(space_id)
+        self.ir_by_space[space_id] = old_ir + self.alpha * (intrinsic_reward - old_ir)
+        self.shared_reward_by_space[space_id] = old_shared_reward + self.alpha * (
+                    shared_episode_reward - old_shared_reward)

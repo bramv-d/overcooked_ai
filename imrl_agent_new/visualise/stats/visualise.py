@@ -85,6 +85,51 @@ from collections import defaultdict
 import math
 
 
+def plot_shared_episode_reward(records, output_path, smoothing_window, goal_space_colors):
+    shared_reward_by_space = defaultdict(list)
+
+    for rec in records:
+        if rec.exploit:
+            goal_space = getattr(rec, "goal_space", None)
+            label = goal_space
+            shared_reward = getattr(rec, "shared_episode_reward", None)
+            if shared_reward is not None:
+                shared_reward_by_space[label].append((rec.rollout_idx, shared_reward))
+
+    if not shared_reward_by_space:
+        print("❌ No shared_episode_reward data found.")
+        return
+
+    plt.figure(figsize=(11, 6))
+    ax = plt.gca()
+
+    for label in sorted(shared_reward_by_space):
+        # sort by rollout index to ensure lines are smooth
+        reward_sorted = sorted(shared_reward_by_space[label])
+        x_vals, y_vals = zip(*reward_sorted)
+
+        # apply smoothing
+        y_smooth = moving_average(y_vals, smoothing_window)
+
+        # adjust x accordingly
+        x_vals = x_vals[len(x_vals) - len(y_smooth):]
+
+        color = goal_space_colors[label]
+
+        ax.plot(x_vals, y_smooth, color=color, label=f"{label} shared reward")
+
+    ax.set_xlabel("Roll-out index")
+    ax.set_ylabel("Shared Episode Reward (smoothed)")
+    ax.set_title("Shared Episode Reward per goal space")
+    ax.grid(True, which="both", linestyle=":")
+
+    ax.legend(loc="upper left", fontsize=9)
+
+    plt.tight_layout()
+    plt.savefig(output_path)
+    print(f"✅ Saved shared_episode_reward plot to {output_path}")
+
+
 def plot_goalspace_distribution(records, output_path, num_bins, goal_space_colors):
     goal_counts_per_bin = defaultdict(list)
 
@@ -172,6 +217,7 @@ def make_graphs():
             # 3️⃣ Plot with consistent colors
             plot_fitness(records, f"visualise/stats/fitness_plot_{ag}.png", 5, goal_space_colors)
             plot_goalspace_distribution(records, f"visualise/stats/goalspace_dist_{ag}.png", 5, goal_space_colors)
+            plot_shared_episode_reward(records, f"visualise/stats/shared_reward_plot_{ag}.png", 5, goal_space_colors)
             get_statistics(path)
         else:
             print(f"❌ Could not find {path}")

@@ -61,11 +61,11 @@ class IMGEPAgent(Agent):
         super().__init__()
 
     # ---------------------------------------------------------------- reset
-    def reset(self, mdp: OvercookedGridworld | None = None):
+    def reset(self, mdp: OvercookedGridworld | None = None, shared_episode: bool = False):
         """Called by Overcooked-AI at episode start."""
         super().reset()
         self.mdp = mdp
-        self.goal_space_id = self.bandit.next_goal()
+        self.goal_space_id = self.bandit.next_goal(shared_episode)
         self.goal_reach_time_step = None
         self.t = 0
         self.rollout_fitness = 0.0
@@ -73,14 +73,15 @@ class IMGEPAgent(Agent):
 
         self.use_pi = (random.random() > 0.8)
 
-        if not self.kb.nearest(
-                self.goal_space_id, 1):
+        if not self.kb.nearest(self.goal_space_id, 1):
             # --- explore: create new policy --
             self.neuro_policy = NeuroPolicy()
         elif self.use_pi:
             # --- exploit: clone best policy ----
-            relevant_policies = self.kb.nearest(
-                self.goal_space_id, 50)
+            relevant_policies = sorted(
+                self.kb.nearest(self.goal_space_id, 50),
+                key=lambda i: i.shared_episode_reward
+            )[:20]
             best_idx = np.argmax([r.fitness for r in relevant_policies]) if relevant_policies else 0
             self.parent_policy = relevant_policies[best_idx]
             theta_vec = self.parent_policy.theta
@@ -96,8 +97,10 @@ class IMGEPAgent(Agent):
                     exploit=True
                 )
             if not relevant_policies:
-                relevant_policies = self.kb.nearest(
-                    self.goal_space_id, 50)
+                relevant_policies = sorted(
+                    self.kb.nearest(self.goal_space_id, 50),
+                    key=lambda i: i.shared_episode_reward
+                )[:20]
 
             self.parent_policy = random.choice(relevant_policies)
             adaptive_noise = 0.1 / (self.parent_policy.intrinsic_reward + 0.1)  # more noise when progress is low
@@ -153,14 +156,13 @@ class IMGEPAgent(Agent):
 
     def return_action(self, action, state):
         self.previous_state = state
-        return action, {}
+        return action
 
     # ---------------------------------------------------------------- finish
-    def finish_rollout(self, final_state: OvercookedState, start_state: OvercookedState):
+    def finish_rollout(self, final_state: OvercookedState, info):
         outcome = extract_outcome(final_state,
                                   final_state.players[self.agent_id],
                                   self.mdp)
-
 
         # intrinsic reward = Δ fitness vs nearest prior experiment
         if len(self.kb) == 0 or not self.parent_policy:
@@ -169,7 +171,8 @@ class IMGEPAgent(Agent):
             nearest = self.kb.nearest(self.goal_space_id, 1, self.use_pi)
             prev_f = np.mean([r.fitness for r in nearest]) if nearest else 0.0
 
-        r_i = max(0.0, self.rollout_fitness - prev_f)
+        fitness_difference = self.rollout_fitness - prev_f
+        r_i = max(0.0, fitness_difference)
 
         if self.use_pi:
             record_amount = 1
@@ -179,21 +182,19 @@ class IMGEPAgent(Agent):
         rollout_idx = self.kb.buffer[-1].rollout_idx + 1 if self.kb.buffer else 0
 
         if self.use_pi:
-            self.bandit.update(self.goal_space_id, r_i)
-
-        # Save the amount of records in the knowledge base based on the r_i
+            self.bandit.update(self.goal_space_id, r_i, self.get_overarching_reward(info))
+        # Save the number of records in the knowledge base based on the r_i
         # This follows the idea of neuro evolution where successful policies are recorded more often and bad policies are recorded less often
         for _ in range(record_amount):
             self.kb.add_record(ExperimentRecord(
                 goal_space=self.goal_space_id,
                 theta=self.neuro_policy.theta,
-                outcome=outcome,
+                shared_episode_reward=self.get_overarching_reward(info),
                 fitness=self.rollout_fitness,
                 intrinsic_reward=r_i,
                 exploit=self.use_pi,
                 rollout_idx=rollout_idx,
             ))
-
 
     def _get_motion_goals(self, high_level_action: HighLevelActions, state: OvercookedState):
         all_counters = self.mdp.get_counter_locations()
@@ -223,3 +224,13 @@ class IMGEPAgent(Agent):
                 # If the agent is waiting, return an empty list to indicate no motion goals
                 return []
         return None
+
+    def get_overarching_reward(self, info) -> float:
+        """Get the overarching reward for the agent."""
+        ep_sparse_r = info['episode']['ep_sparse_r']
+        ep_shaped_r = info['episode']['ep_shaped_r']
+        if ep_sparse_r:
+            return ep_sparse_r
+        elif ep_shaped_r:
+            return ep_shaped_r
+        return 0.0

@@ -1,4 +1,5 @@
 import copy
+import random
 
 from imrl_agent_new.VARIABLES import HORIZON
 from imrl_agent_new.helper.create_gif import create_gif
@@ -10,12 +11,20 @@ from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 
 # ---------------------------------------------------------------- settings
-# 17, 18, 20, 21
-layout_name = layouts[20]  # any layout string
+# 17, 18, 20, 21, 22
+layout_name = layouts[21]  # any layout string
 
 # ---------------------------------------------------------------- env + agents
 mdp: OvercookedGridworld = OvercookedGridworld.from_layout_name(layout_name)
-env: OvercookedEnv = OvercookedEnv.from_mdp(mdp, horizon=HORIZON, info_level=0)
+mlam_params = {
+    "start_orientations": False,
+    "wait_allowed": False,
+    "counter_goals": mdp.terrain_pos_dict["X"],
+    "counter_drop": mdp.terrain_pos_dict["X"],
+    "counter_pickup": mdp.terrain_pos_dict["X"],
+    "same_motion_goals": True,
+}
+env: OvercookedEnv = OvercookedEnv.from_mdp(mdp, horizon=HORIZON, info_level=0, mlam_params=mlam_params)
 
 counter = mdp.get_counter_locations()
 mp = env.mp
@@ -24,16 +33,17 @@ mlam = env.mlam
 max_dist = max_plan_cost(mp)  # longest path in the layout, used for normalization
 
 agents = [IMGEPAgent(env, mdp, agent_id, horizon=HORIZON, max_dist=max_dist) for agent_id in range(2)]
-for ag in agents: ag.kb.load_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
+# for ag in agents: ag.kb.load_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
 # ---------------------------------------------------------------- run one roll-out
 state = env.reset()
 
-ROLL_OUTS = 2000
+ROLL_OUTS = 4000
 
 for roll in range(ROLL_OUTS):
     print(roll)
+    shared_episode = random.random() < 0.2  # randomly decide if this is a shared episode
     env.reset(regen_mdp=True)
-    for ag in agents: ag.reset(mdp)
+    for ag in agents: ag.reset(mdp, shared_episode=shared_episode)
 
     state = env.state
     done = False
@@ -41,15 +51,13 @@ for roll in range(ROLL_OUTS):
     # -------- record trajectory -----------------------------------------
     ep_states = [copy.deepcopy(state)]  # include start state
     while not done:
-        joint = [ag.action(state)[0] for ag in agents]
+        joint = [ag.action(state) for ag in agents]
         state, _, done, info = env.step(joint)
         ep_states.append(copy.deepcopy(state))  # save each next state
 
-    if info['episode']['ep_sparse_r'] > 0:
-        print(f"Rollout {roll} finished with reward: {info['episode']['ep_sparse_r']:.2f}")
     # -------- finish roll-out bookkeeping -------------------------------
     for ag in agents:
-        ag.finish_rollout(state, ep_states[0])
+        ag.finish_rollout(state, info)
 
     if roll == ROLL_OUTS - 1:
         create_gif(ep_states, mdp, roll, True)
