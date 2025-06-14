@@ -7,18 +7,8 @@ import numpy as np
 
 
 class GoalSpacePolicy:
-    """
-    ε-greedy, non-stationary bandit over goal-spaces.
-
-    •  ε %  of the time  → uniform exploration
-    • (1-ε) % of the time
-        – if at least one space has positive avg-LP → sample ∝ LP (soft max)
-        – else fallback to uniform   (no progress anywhere yet)
-
-    Learning-progress is tracked with an exponential moving average so
-    old data is forgotten and the agent can return to a space if it
-    starts improving again.
-    """
+    # TODO remove this and include it in the agent knowledge base
+    # TODO The goal selection policy can also move to the knowledge base to make it more flexible
 
     def __init__(
         self,

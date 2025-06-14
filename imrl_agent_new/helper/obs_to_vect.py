@@ -1,14 +1,43 @@
+from enum import IntEnum
+
 import numpy as np
 
-from imrl_agent_new.overcooked.outcome import ItemCode, item_to_int
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, PlayerState
+from overcooked_ai_py.mdp.overcooked_mdp import ObjectState, OvercookedGridworld, OvercookedState, PlayerState
 from overcooked_ai_py.planning.planners import MotionPlanner
 
+
+class ItemCode(IntEnum):
+    """Compact integer codes for objects the chef can hold or deliver."""
+    NOTHING = 0
+    ONION = 1
+    TOMATO = 2
+    DISH = 3
+    SOUP = 4
+
+
+def item_to_int(item_name: ObjectState) -> int:
+    """
+    Map an Overcooked item string (or None) to a compact int code.
+    Unknown items default to 0 (NOTHING).
+    """
+    if item_name is None:
+        return ItemCode.NOTHING.value
+    try:
+        return ItemCode[(item_name.name.upper())].value
+    except KeyError:
+        return ItemCode.NOTHING.value
+
+
+def int_to_item(code: int) -> str:
+    """Reverse lookup: from int to canonical item name."""
+    try:
+        return ItemCode(code).name.lower()
+    except ValueError:
+        return "unknown"
 
 def is_reachable(mp: MotionPlanner, pos_and_or, target_locations) -> float:
     """Return 1.0 if any target location is reachable, else 0.0."""
     return 1.0 if mp.min_cost_to_feature(pos_and_or, target_locations) != np.inf else 0.0
-
 
 OBS_VEC_SIZE = len(ItemCode) + 8
 

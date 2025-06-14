@@ -12,7 +12,6 @@ from imrl_agent_new.core.neuro_policy import NeuroPolicy
 from imrl_agent_new.helper.choose_goal import get_plan
 from imrl_agent_new.helper.high_level_actions import HighLevelActions
 from imrl_agent_new.helper.obs_to_vect import obs_to_vec
-from imrl_agent_new.overcooked.outcome import extract_outcome
 from overcooked_ai_py.agents.agent import Agent
 from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
@@ -20,6 +19,7 @@ from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedS
 from overcooked_ai_py.planning.planners import MediumLevelActionManager, MotionPlanner
 
 
+# TODO I could add topology evolution to this agent, but it would require a lot of changes to the knowledge base and goal space
 # --------------------------------------------------------------------------- #
 class IMGEPAgent(Agent):
     """
@@ -54,7 +54,6 @@ class IMGEPAgent(Agent):
         self.t: int = 0
         self.goal_reach_time_step = None
         self.parent_policy: ExperimentRecord | None = None
-        self.previous_state: OvercookedState | None = None
         self.rollout_fitness = 0.0
         # ---------- path planning --------------------------------------
         self.path = []
@@ -160,10 +159,6 @@ class IMGEPAgent(Agent):
 
     # ---------------------------------------------------------------- finish
     def finish_rollout(self, final_state: OvercookedState, info):
-        outcome = extract_outcome(final_state,
-                                  final_state.players[self.agent_id],
-                                  self.mdp)
-
         # intrinsic reward = Δ fitness vs nearest prior experiment
         if len(self.kb) == 0 or not self.parent_policy:
             prev_f = 0.0

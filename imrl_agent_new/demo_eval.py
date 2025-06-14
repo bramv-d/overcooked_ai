@@ -16,15 +16,8 @@ layout_name = layouts[21]  # any layout string
 
 # ---------------------------------------------------------------- env + agents
 mdp: OvercookedGridworld = OvercookedGridworld.from_layout_name(layout_name)
-mlam_params = {
-    "start_orientations": False,
-    "wait_allowed": False,
-    "counter_goals": mdp.terrain_pos_dict["X"],
-    "counter_drop": mdp.terrain_pos_dict["X"],
-    "counter_pickup": mdp.terrain_pos_dict["X"],
-    "same_motion_goals": True,
-}
-env: OvercookedEnv = OvercookedEnv.from_mdp(mdp, horizon=HORIZON, info_level=0, mlam_params=mlam_params)
+
+env: OvercookedEnv = OvercookedEnv.from_mdp(mdp, horizon=HORIZON, info_level=0)
 
 counter = mdp.get_counter_locations()
 mp = env.mp
