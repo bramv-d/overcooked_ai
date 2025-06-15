@@ -176,3 +176,4 @@ node_modules/
 src/overcooked_demo/server/overcooked_ai/
 /imrl_agent/trajectory/images/
 /imrl_agent_new/kb/
+/IMGEP_agent/agent/kb/

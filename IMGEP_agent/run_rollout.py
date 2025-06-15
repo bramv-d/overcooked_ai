@@ -1,0 +1,49 @@
+import copy
+
+from IMGEP_agent.agent.agent import IMGEPAgent
+from IMGEP_agent.hyper_parameters import HORIZON, LAYOUT_ID, LOAD_KB, ROLLOUTS
+from IMGEP_agent.visualise.create_gif import create_gif
+from overcooked_ai_py.data.layouts.layouts import layouts
+from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
+from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
+
+layout_name = layouts[LAYOUT_ID]
+
+# ---------------------------------------------------------------- env + agents
+mdp: OvercookedGridworld = OvercookedGridworld.from_layout_name(layout_name)
+
+env: OvercookedEnv = OvercookedEnv.from_mdp(mdp, horizon=HORIZON, info_level=0)
+
+counter = mdp.get_counter_locations()
+mp = env.mp
+mlam = env.mlam
+
+agents = [IMGEPAgent(env, mdp, agent_id) for agent_id in range(2)]
+if LOAD_KB:
+    for ag in agents: ag.kb.load_buffer("kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
+# ---------------------------------------------------------------- run one roll-out
+state = env.reset()
+
+ROLL_OUTS = ROLLOUTS
+
+for roll in range(ROLL_OUTS):
+    print(roll)
+    env.reset(regen_mdp=True)
+    for ag in agents: ag.reset(mdp)
+    done = False
+
+    # -------- record trajectory -----------------------------------------
+    ep_states = [copy.deepcopy(env.state)]  # include start state
+    while not done:
+        joint = [ag.action(state) for ag in agents]
+        state, _, done, info = env.step(joint)
+        ep_states.append(copy.deepcopy(state))  # save each next state
+
+    # -------- finish roll-out bookkeeping -------------------------------
+    for ag in agents:
+        ag.finish_rollout(state, info)
+
+    if roll == ROLL_OUTS - 1:
+        create_gif(ep_states, mdp, roll, True)
+
+for ag in agents: ag.kb.save_buffer("agent/kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")

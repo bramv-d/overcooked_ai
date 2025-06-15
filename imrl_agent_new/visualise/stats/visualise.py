@@ -143,7 +143,7 @@ def plot_goalspace_distribution(records, output_path, num_bins, goal_space_color
     all_idxs = set()
     for rec in seen.values():
         rollout_idx = rec.rollout_idx
-        space = rec.goal_space
+        space = rec.goal_space_id
         per_rollout[rollout_idx][space] += 1
         all_idxs.add(rollout_idx)
 
@@ -209,7 +209,7 @@ def make_graphs():
             records = load_records(path)
 
             # 1️⃣ Collect all goal spaces
-            all_spaces = sorted({rec.goal_space for rec in records if rec.exploit})
+            all_spaces = sorted({rec.goal_space_id for rec in records if rec.exploit})
 
             # 2️⃣ Build consistent color map
             goal_space_colors = get_goal_space_colors(all_spaces)
@@ -239,7 +239,7 @@ def get_statistics(pickle_path):
 
     # STEP 2: Compute stats
     total = len(filtered)
-    goal_space_counts = Counter(rec.goal_space for rec in filtered)
+    goal_space_counts = Counter(rec.goal_space_id for rec in filtered)
     rollout_indices = [rec.rollout_idx for rec in filtered]
     min_rollout = min(rollout_indices) if rollout_indices else 0
     max_rollout = max(rollout_indices) if rollout_indices else 0
@@ -248,8 +248,8 @@ def get_statistics(pickle_path):
     fitness_by_space = defaultdict(list)
     ir_by_space = defaultdict(list)
     for rec in filtered:
-        fitness_by_space[rec.goal_space].append(rec.fitness)
-        ir_by_space[rec.goal_space].append(rec.intrinsic_reward)
+        fitness_by_space[rec.goal_space_id].append(rec.fitness)
+        ir_by_space[rec.goal_space_id].append(rec.intrinsic_reward)
 
     avg_fitness_by_space = {space: np.mean(values) for space, values in fitness_by_space.items()}
     avg_ir_by_space = {space: np.mean(values) for space, values in ir_by_space.items()}

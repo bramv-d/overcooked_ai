@@ -1,18 +1,15 @@
-from __future__ import annotations
-
-import datetime as dt
 import pickle
-from dataclasses import dataclass, field
-from typing import List, Tuple
+from dataclasses import dataclass
+from typing import List
 
 import numpy as np
 
+from IMGEP_agent.agent.goals.goal_spaces import Goal
 
-# ---------- 1. A single experiment record ----------
+
 @dataclass
-class ExperimentRecord:
-    # High-level information
-    goal_space: str  # goal space ID, e.g., "PLACE_OBJECT", "PICK_OBJECT", etc.
+class RolloutRecord:
+    goal_space_id: int  # goal space ID, e.g., "PLACE_OBJECT", "PICK_OBJECT", etc.
     theta: np.ndarray  # policy params you executed
     fitness: float
     intrinsic_reward: float
@@ -20,33 +17,28 @@ class ExperimentRecord:
     exploit: bool = False  # True if this was an exploit step, False if it was exploration
     rollout_idx: int = 0  # episode number, used to track the order of experiments
 
-    # Optional extras (kept for replay/analysis)
-    trajectory: List[Tuple[np.ndarray, np.ndarray]] = field(default_factory=list)
-    timestamp: dt.datetime = field(default_factory=dt.datetime.utcnow)
 
-# ---------- 3. Knowledge base ----------
 class KnowledgeBase:
     """
     In-memory buffer + KD-Tree index for nearest-neighbour queries on (context, outcome).
     """
 
     def __init__(self):
-        self.buffer: List[ExperimentRecord] = []
+        self.buffer: List[RolloutRecord] = []
 
     # ---- public API ---------------------------------------------------------
 
-    def add_record(self, rec: ExperimentRecord):
+    def add_record(self, rec: RolloutRecord):
         """Insert a new experiment and flag index for rebuild."""
         self.buffer.append(rec)
 
-    def nearest(self, goal_space: str, k: int, exploit: bool | None = None) -> List[
-                                                                                                        ExperimentRecord] | None:
+    def nearest(self, goal: Goal, k: int, exploit: bool | None = None) -> List[RolloutRecord] | None:
         """
         Return the db_ids(s) of the most similar past experiment.
         """
         nearest = []
         for index, g in enumerate(reversed(self.buffer)):  # Iterate in reverse order
-            if g.goal_space == goal_space and (exploit is None or g.exploit == exploit):
+            if g.goal_space_id == goal.goal_id and (exploit is None or g.exploit == exploit):
                 nearest.append(g)
             if len(nearest) == k:
                 break
@@ -55,7 +47,7 @@ class KnowledgeBase:
     def __len__(self):
         return len(self.buffer)
 
-    def well_performing_policies(self, fitness_threshold, record_amount, exploit) -> List[ExperimentRecord]:
+    def well_performing_policies(self, fitness_threshold, record_amount, exploit) -> List[RolloutRecord]:
         """
         Return a list of records with fitness above the threshold
         """
@@ -66,7 +58,6 @@ class KnowledgeBase:
             if len(well_performing) == record_amount:
                 break
         return well_performing
-
 
     # --- save & load ------------------------------------------------------------
     def save_buffer(self, path: str):

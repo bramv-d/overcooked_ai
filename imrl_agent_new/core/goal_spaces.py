@@ -1,4 +1,4 @@
-from imrl_agent_new.overcooked.outcome import ItemCode, item_to_int
+from imrl_agent_new.helper.obs_to_vect import ItemCode, item_to_int
 from overcooked_ai_py.mdp.overcooked_mdp import ObjectState, OvercookedGridworld, OvercookedState, PlayerState
 
 
