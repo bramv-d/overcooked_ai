@@ -63,3 +63,4 @@ class NeuroPolicy:
         i += H * A
         b2 = self.theta[i:i + A]
         return W1, b1, W2, b2
+

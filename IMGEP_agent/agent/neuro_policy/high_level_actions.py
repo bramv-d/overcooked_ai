@@ -10,7 +10,7 @@ class HighLevelActions(IntEnum):
 
 
 def get_motion_goals(mlam: MediumLevelActionManager, mdp: OvercookedGridworld,
-                     high_level_action: HighLevelActions, state: OvercookedState):
+                     high_level_action: int, state: OvercookedState):
     all_counters = mdp.get_counter_locations()
     counter_objects = mdp.get_counter_objects_dict(state, all_counters)
     pots_object = mdp.get_pot_states(state)

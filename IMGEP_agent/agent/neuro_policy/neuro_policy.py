@@ -1,11 +1,13 @@
 # neuro_policy.py
+import random
 
 import numpy as np
 
 from IMGEP_agent.agent.goals.goal_spaces import Goal
 from IMGEP_agent.agent.helpers.obs_to_vect import OBS_VEC_SIZE
+from IMGEP_agent.agent.knowledge_base import KnowledgeBase
 from IMGEP_agent.agent.neuro_policy.high_level_actions import HighLevelActions
-from IMGEP_agent.hyper_parameters import NEURO_POLICY_HIDDEN_DIM
+from IMGEP_agent.hyper_parameters import ADAPTIVE_NOISE_STD, NEURO_POLICY_HIDDEN_DIM, PARENT_POLICY_RECENT_RECORDS
 
 
 def he_init(fan_in: int, fan_out: int) -> np.ndarray:
@@ -67,12 +69,31 @@ class NeuroPolicy:
         return W1, b1, W2, b2
 
 
-# The interface of a goal space neuropolicy is:
-class GoalSpaceNeuroPolicy(NeuroPolicy):
+class GoalSpaceNeuroPolicy:
     """
     A NeuroPolicy that is specialized for a specific goal space.
     """
 
-    def __init__(self, goal: Goal, theta: np.ndarray | None = None):
-        super().__init__(theta)
+    def __init__(self, goal: Goal, neuro_policy: NeuroPolicy):
         self.goal = goal
+        self.neuro_policy = neuro_policy
+
+
+def get_neuro_policy(selected_goal: Goal, kb: KnowledgeBase, exploit: bool) -> NeuroPolicy:
+    # TODO include the shared episode reward into the policy selection.
+    # TODO this should probably be done on reset. The shared episode reward should be a scalar from 0 tot 1 depending on the 50 recent episodes shared reward
+
+    if not kb.nearest(selected_goal, 1):
+        return NeuroPolicy()
+    rec = kb.nearest(selected_goal, PARENT_POLICY_RECENT_RECORDS)
+    if exploit:
+        # exploit: use the best policy from the knowledge base
+        best_idx = np.argmax([r.fitness for r in rec])
+        return NeuroPolicy(theta=rec[best_idx].theta)
+
+    # explore: pick a random parent policy to mutate from
+    parent_policy = random.choice(rec)
+    adaptive_noise = ADAPTIVE_NOISE_STD / (
+            parent_policy.intrinsic_reward + ADAPTIVE_NOISE_STD)  # more noise when progress is low
+    child_theta = parent_policy.theta + np.random.normal(0, adaptive_noise, parent_policy.theta.shape)
+    return NeuroPolicy(theta=child_theta)

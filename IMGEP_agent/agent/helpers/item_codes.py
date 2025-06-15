@@ -25,4 +25,6 @@ class ItemCode(IntEnum):
         :param name: The name of the item code.
         :return: The enum value of the item code, or -1 if not found.
         """
+        # Allow for case-insensitive lookup
+        name = name.upper()
         return cls[name].value if name in cls._member_map_ else -1

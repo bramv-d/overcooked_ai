@@ -23,7 +23,7 @@ def obs_to_vec(
     pot_states = mdp.get_pot_states(state)
 
     # Held object one-hot
-    held = item_to_int(me.get_object()) if me.has_object() else 0
+    held = ItemCode.ItemCodeValue(me.get_object().name) if me.has_object() else ItemCode.NOTHING
     held_onehot = np.eye(len(ItemCode), dtype=np.float32)[held]  # shape (5,)
 
     # Binary reachable features
