@@ -64,8 +64,6 @@ def place_object_space(length_of_trajectory: int, name, object_code) -> Goal:
 
 def start_cooking_space(length_of_trajectory: int) -> Goal:
     """Goal: start cooking a requested object; reward falls as cooking time ↑."""
-    pick_onion_goal = pick_object_space(length_of_trajectory, "PICK_ONION", ItemCode.ONION.value)
-    place_onion_goal = place_object_space(length_of_trajectory, "PICK_ONION", ItemCode.ONION.value)
 
     def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
                 agent_id: int, mdp: OvercookedGridworld):

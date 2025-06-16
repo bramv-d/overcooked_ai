@@ -1,5 +1,6 @@
 # neuro_policy.py
 import random
+from typing import List
 
 import numpy as np
 
@@ -17,11 +18,11 @@ def he_init(fan_in: int, fan_out: int) -> np.ndarray:
 
 
 class NeuroPolicy:
-    def __init__(self, theta: np.ndarray | None = None):
+    def __init__(self, goal_spaces: List[Goal], theta: np.ndarray | None = None):
 
         self.inp_dim = OBS_VEC_SIZE  # from obs_to_vec()
         self.hidden_dim = NEURO_POLICY_HIDDEN_DIM
-        self.num_tokens = len(HighLevelActions)
+        self.num_tokens = len(HighLevelActions) + len(goal_spaces)
 
         if theta is None:  # fresh initialization
             W1 = he_init(self.inp_dim, self.hidden_dim)
@@ -74,26 +75,27 @@ class GoalSpaceNeuroPolicy:
     A NeuroPolicy that is specialized for a specific goal space.
     """
 
-    def __init__(self, goal: Goal, neuro_policy: NeuroPolicy):
+    def __init__(self, goal: Goal, neuro_policy: NeuroPolicy, exploit: bool):
         self.goal = goal
         self.neuro_policy = neuro_policy
+        self.exploit = exploit
 
 
-def get_neuro_policy(selected_goal: Goal, kb: KnowledgeBase, exploit: bool) -> NeuroPolicy:
+def get_neuro_policy(selected_goal: Goal, kb: KnowledgeBase, goal_spaces: List[Goal], exploit: bool) -> NeuroPolicy:
     # TODO include the shared episode reward into the policy selection.
     # TODO this should probably be done on reset. The shared episode reward should be a scalar from 0 tot 1 depending on the 50 recent episodes shared reward
 
     if not kb.nearest(selected_goal, 1):
-        return NeuroPolicy()
+        return NeuroPolicy(goal_spaces)
     rec = kb.nearest(selected_goal, PARENT_POLICY_RECENT_RECORDS)
     if exploit:
         # exploit: use the best policy from the knowledge base
         best_idx = np.argmax([r.fitness for r in rec])
-        return NeuroPolicy(theta=rec[best_idx].theta)
+        return NeuroPolicy(theta=rec[best_idx].theta, goal_spaces=goal_spaces)
 
     # explore: pick a random parent policy to mutate from
     parent_policy = random.choice(rec)
     adaptive_noise = ADAPTIVE_NOISE_STD / (
             parent_policy.intrinsic_reward + ADAPTIVE_NOISE_STD)  # more noise when progress is low
     child_theta = parent_policy.theta + np.random.normal(0, adaptive_noise, parent_policy.theta.shape)
-    return NeuroPolicy(theta=child_theta)
+    return NeuroPolicy(theta=child_theta, goal_spaces=goal_spaces)

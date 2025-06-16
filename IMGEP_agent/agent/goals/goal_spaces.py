@@ -7,12 +7,9 @@ from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedS
 
 
 class GoalSpaceEnum(IntEnum):
-    PICK_ONION = 0
-    PICK_DISH = 1
-    PLACE_ONION = 2
-    START_COOKING = 3
-    PICKUP_SOUP = 4
-    DELIVER_SOUP = 5
+    PLACE_ONION = 1
+    START_COOKING = 2
+    PICKUP_SOUP = 3
 
     @classmethod
     def get_goal_space_name(cls, value: int) -> str:
@@ -28,8 +25,6 @@ class Goal:
         self.goal_id = goal_id
         self.fitness = fitness_fn
         self.success = success_fn
-
-
 
 
 def pick_object_space(goal_id: GoalSpaceEnum, object_code: int) -> Goal:
@@ -83,9 +78,7 @@ def place_object_space(goal_id: GoalSpaceEnum, object_code: int) -> Goal:
 
 
 def start_cooking_space() -> Goal:
-    pick_onion = pick_object_space(GoalSpaceEnum.PICK_ONION, ItemCode.ONION.value)
     place_onion = place_object_space(GoalSpaceEnum.PLACE_ONION, ItemCode.ONION.value)
-
     def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
                 agent_id: int, mdp: OvercookedGridworld):
         prev_pots = set(mdp.get_cooking_pots(mdp.get_pot_states(previous_state)))
@@ -95,7 +88,9 @@ def start_cooking_space() -> Goal:
         prev_agent = previous_state.players[agent_id]
         adj = mdp.get_adjacent_features(prev_agent)
         adj_positions = {pos for pos, _ in adj}
-
+        if place_onion.success(agent_id, state, previous_state, mdp):
+            place_onion_fitness = place_onion.fitness(pick_step, state, previous_state, agent_id, mdp)
+            return place_onion_fitness / 4
         for p in new:
             if p in adj_positions:
                 current_pot_state = state.get_object(p)
@@ -107,46 +102,46 @@ def start_cooking_space() -> Goal:
         prev_pots = set(mdp.get_cooking_pots(mdp.get_pot_states(previous_state)))
         curr_pots = set(mdp.get_cooking_pots(mdp.get_pot_states(state)))
         new = curr_pots - prev_pots
+        if not new:
+            return False
         curr_agent = state.players[agent_id]
         adj = mdp.get_adjacent_features(curr_agent)
         adj_positions = {pos for pos, _ in adj}
-        return any(p in adj_positions for p in new)
+        is_success = any(p in adj_positions for p in new)
+        return is_success
 
     return Goal(GoalSpaceEnum.START_COOKING, fitness_fn=fitness, success_fn=success)
 
 
 def pickup_soup_space() -> Goal:
     start_cooking = start_cooking_space()
-    pick_dish = pick_object_space(GoalSpaceEnum.PICK_DISH, ItemCode.DISH.value)
-
     def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
                 agent_id: int, mdp: OvercookedGridworld):
-        player = state.players[agent_id]
+        player: PlayerState = state.players[agent_id]
+        previous_player: PlayerState = previous_state.players[agent_id]
         held = player.get_object() if player.has_object() else None
+
         if held and held.name == 'soup':
             return held.value / 65
-        if not any(mdp.get_cooking_pots(mdp.get_pot_states(state))):
-            return start_cooking.fitness(pick_step, state, previous_state, agent_id, mdp)
-        if previous_state.players[agent_id].has_object() and ItemCode.ItemCodeValue(
-                previous_state.players[agent_id].get_object().name) == ItemCode.ONION.value:
-            return -0.2
-        if pick_dish.success(agent_id, state, previous_state, mdp):
-            return 0.2
+
+        if start_cooking.success(agent_id, state, previous_state, mdp):
+            start_cooking_fitness = start_cooking.fitness(pick_step, state, previous_state, agent_id, mdp)
+            return start_cooking_fitness / 2
         return 0.0
 
     def success(agent_id: int, state: OvercookedState, previous_state: OvercookedState,
                 mdp: OvercookedGridworld):
-        player = state.players[agent_id]
+        player: PlayerState = state.players[agent_id]
         held = player.get_object() if player.has_object() else None
-        return bool(held and held.name == 'soup')
+        if held and held.name == 'soup':
+            return True
+        return False
 
     return Goal(GoalSpaceEnum.PICKUP_SOUP, fitness_fn=fitness, success_fn=success)
 
 
 def create_goal_spaces() -> List[Goal]:
     return [
-        pick_object_space(GoalSpaceEnum.PICK_ONION, ItemCode.ONION.value),
-        pick_object_space(GoalSpaceEnum.PICK_DISH, ItemCode.DISH.value),
         place_object_space(GoalSpaceEnum.PLACE_ONION, ItemCode.ONION.value),
         start_cooking_space(),
         pickup_soup_space(),
