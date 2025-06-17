@@ -20,7 +20,7 @@ def he_init(fan_in: int, fan_out: int) -> np.ndarray:
 class NeuroPolicy:
     def __init__(self, goal_spaces: List[Goal], theta: np.ndarray | None = None):
 
-        self.inp_dim = OBS_VEC_SIZE  # from obs_to_vec()
+        self.inp_dim = OBS_VEC_SIZE
         self.hidden_dim = NEURO_POLICY_HIDDEN_DIM
         self.num_tokens = len(HighLevelActions) + len(goal_spaces)
 

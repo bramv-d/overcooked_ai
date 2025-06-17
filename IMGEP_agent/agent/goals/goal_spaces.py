@@ -3,10 +3,13 @@ from typing import List
 
 from IMGEP_agent.agent.helpers.item_codes import ItemCode
 from IMGEP_agent.hyper_parameters import HORIZON
+from overcooked_ai_py.mdp.actions import Action
+from overcooked_ai_py.mdp.layout_generator import COUNTER, POT, TYPE_TO_CODE
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, PlayerState
 
 
 class GoalSpaceEnum(IntEnum):
+    SHARED_EPISODE = 0
     PLACE_ONION = 1
     START_COOKING = 2
     PICKUP_SOUP = 3
@@ -46,7 +49,7 @@ def pick_object_space(goal_id: GoalSpaceEnum, object_code: int) -> Goal:
     return Goal(goal_id, fitness_fn=fitness, success_fn=success)
 
 
-def place_object_space(goal_id: GoalSpaceEnum, object_code: int) -> Goal:
+def place_object_space(goal_id: GoalSpaceEnum, object_code: int, terrain_type: int) -> Goal:
     def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
                 agent_id: int, mdp: OvercookedGridworld):
         if pick_step is None:
@@ -62,23 +65,16 @@ def place_object_space(goal_id: GoalSpaceEnum, object_code: int) -> Goal:
         held_prev = ItemCode.ItemCodeValue(prev_agent.held_object.name)
         if held_prev != object_code:
             return False
-
-        # check adjacency
-        adjacent = mdp.get_adjacent_features(curr_agent)
-        adj_positions = {pos for pos, _ in adjacent}
-
-        for pot in mdp.get_pot_locations():
-            prev_obj = previous_state.get_object(pot) if previous_state.has_object(pot) else None
-            curr_obj = state.get_object(pot) if state.has_object(pot) else None
-            if pot in adj_positions and prev_obj != curr_obj:
-                return True
-        return False
+        facing_cell = Action.move_in_direction(prev_agent.position, prev_agent.orientation)
+        terrain_type_code = mdp.get_terrain_type_at_pos(facing_cell)
+        environment_type_code = TYPE_TO_CODE[terrain_type_code]
+        return environment_type_code == terrain_type
 
     return Goal(goal_id, fitness_fn=fitness, success_fn=success)
 
 
 def start_cooking_space() -> Goal:
-    place_onion = place_object_space(GoalSpaceEnum.PLACE_ONION, ItemCode.ONION.value)
+    place_onion = place_object_space(GoalSpaceEnum.PLACE_ONION, ItemCode.ONION.value, TYPE_TO_CODE[POT])
     def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
                 agent_id: int, mdp: OvercookedGridworld):
         prev_pots = set(mdp.get_cooking_pots(mdp.get_pot_states(previous_state)))
@@ -135,9 +131,20 @@ def pickup_soup_space() -> Goal:
     return Goal(GoalSpaceEnum.PICKUP_SOUP, fitness_fn=fitness, success_fn=success)
 
 
+def shared_episode_space() -> Goal:
+    def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
+                agent_id: int, mdp: OvercookedGridworld):
+        return 0.0  # The fitness is based on the rewards from the environment, not the goal space
+
+    def success(agent_id: int, state: OvercookedState, previous_state: OvercookedState,
+                mdp: OvercookedGridworld):
+        return False
+
+    return Goal(GoalSpaceEnum.SHARED_EPISODE, fitness_fn=fitness, success_fn=success)
+
 def create_goal_spaces() -> List[Goal]:
     return [
-        place_object_space(GoalSpaceEnum.PLACE_ONION, ItemCode.ONION.value),
+        place_object_space(GoalSpaceEnum.PLACE_ONION, ItemCode.ONION.value, TYPE_TO_CODE[COUNTER]),
         start_cooking_space(),
         pickup_soup_space(),
     ]

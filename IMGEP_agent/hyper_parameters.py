@@ -1,7 +1,7 @@
 # ROLLOUT PARAMETERS
 HORIZON = 100  # number of steps to run per rollout
 ROLLOUTS = 2000  # number of rollouts to run
-LAYOUT_ID = 21  # layout index to use from the layouts list in overcooked_ai_py
+LAYOUT_ID = 22  # layout index to use from the layouts list in overcooked_ai_py
 LOAD_KB = False  # whether to load the knowledge base from a file or not
 
 # AGENT PARAMETERS
