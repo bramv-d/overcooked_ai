@@ -1,9 +1,8 @@
-# neuro_policy.py
+from typing import List
 
 import numpy as np
 
-from imrl_agent_new.helper.high_level_actions import HighLevelActions
-from imrl_agent_new.helper.obs_to_vect import OBS_VEC_SIZE
+from HiMAGE.agent.goals.goal_spaces import Goal
 
 
 def he_init(fan_in: int, fan_out: int) -> np.ndarray:
@@ -12,12 +11,12 @@ def he_init(fan_in: int, fan_out: int) -> np.ndarray:
     return np.random.randn(fan_in, fan_out).astype(np.float32) * std
 
 
-class NeuroPolicy:
-    def __init__(self, theta: np.ndarray | None = None):
+class GoalPolicy:
+    def __init__(self, goal_spaces: List[Goal], theta: np.ndarray | None = None):
 
-        self.inp_dim = OBS_VEC_SIZE  # from obs_to_vec()
-        self.hidden_dim = 64
-        self.num_tokens = len(HighLevelActions)
+        self.inp_dim = OBS_VEC_SIZE
+        self.hidden_dim = NEURO_POLICY_HIDDEN_DIM
+        self.num_tokens = len(HighLevelActions) + len(goal_spaces)
 
         if theta is None:  # fresh initialization
             W1 = he_init(self.inp_dim, self.hidden_dim)
@@ -31,7 +30,7 @@ class NeuroPolicy:
     # ──────────────────────────── public ──────────────────────────────
     def select_token(self,
                      obs_vec: np.ndarray,
-                     greedy: bool = True) -> int:
+                     greedy: bool) -> int:
 
         x = np.concatenate([obs_vec]).astype(np.float32)
 
@@ -63,4 +62,3 @@ class NeuroPolicy:
         i += H * A
         b2 = self.theta[i:i + A]
         return W1, b1, W2, b2
-
