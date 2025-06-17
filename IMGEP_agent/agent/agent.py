@@ -104,7 +104,6 @@ class IMGEPAgent(Agent):
             token = HighLevelActions(neuro_policy_token)
             motion_goals = get_motion_goals(self.mlam, self.mdp, token, state)
             self.path = get_plan(state.players[self.agent_id].pos_and_or, motion_goals, self.mlam)
-            print(self.path)
         else:
             self.goal_space_neuro_policies.append(
                 GoalSpaceNeuroPolicy(

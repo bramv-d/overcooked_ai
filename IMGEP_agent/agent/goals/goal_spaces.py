@@ -89,8 +89,7 @@ def start_cooking_space() -> Goal:
         adj = mdp.get_adjacent_features(prev_agent)
         adj_positions = {pos for pos, _ in adj}
         if place_onion.success(agent_id, state, previous_state, mdp):
-            place_onion_fitness = place_onion.fitness(pick_step, state, previous_state, agent_id, mdp)
-            return place_onion_fitness / 4
+            return 0.1
         for p in new:
             if p in adj_positions:
                 current_pot_state = state.get_object(p)
@@ -115,18 +114,14 @@ def start_cooking_space() -> Goal:
 
 def pickup_soup_space() -> Goal:
     start_cooking = start_cooking_space()
+    pickup_dish = pick_object_space(GoalSpaceEnum.PICKUP_SOUP, ItemCode.DISH.value)
     def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
                 agent_id: int, mdp: OvercookedGridworld):
         player: PlayerState = state.players[agent_id]
-        previous_player: PlayerState = previous_state.players[agent_id]
         held = player.get_object() if player.has_object() else None
 
         if held and held.name == 'soup':
             return held.value / 65
-
-        if start_cooking.success(agent_id, state, previous_state, mdp):
-            start_cooking_fitness = start_cooking.fitness(pick_step, state, previous_state, agent_id, mdp)
-            return start_cooking_fitness / 2
         return 0.0
 
     def success(agent_id: int, state: OvercookedState, previous_state: OvercookedState,

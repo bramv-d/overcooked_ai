@@ -36,7 +36,7 @@ class NeuroPolicy:
     # ──────────────────────────── public ──────────────────────────────
     def select_token(self,
                      obs_vec: np.ndarray,
-                     greedy: bool = True) -> int:
+                     greedy: bool) -> int:
 
         x = np.concatenate([obs_vec]).astype(np.float32)
 

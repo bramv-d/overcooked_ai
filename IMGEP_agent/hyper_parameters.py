@@ -10,7 +10,7 @@ EXPLOIT_PROB = 0.2  # probability of exploiting the current policy
 ### NEURAL NETWORK PARAMETERS
 NEURO_POLICY_HIDDEN_DIM = 64  # hidden layer size for the neural network policy
 ADAPTIVE_NOISE_STD = 0.1  # standard deviation for the adaptive noise added to the policy outputs
-PARENT_POLICY_RECENT_RECORDS = 20  # number of recent records to consider when selecting a parent policy
+PARENT_POLICY_RECENT_RECORDS = 50  # number of recent records to consider when selecting a parent policy
 
 ### GOAL SELECTION PARAMETERS
 GOAL_EMA_K = 20  # How many past exploit records to include in the EMA
