@@ -1,18 +1,20 @@
 from enum import IntEnum
 from typing import List
 
-from IMGEP_agent.agent.helpers.item_codes import ItemCode
-from IMGEP_agent.hyper_parameters import HORIZON
+from HiMAGE.agent.helpers.item_codes import ItemCode
+from HiMAGE.hyper_parameters import HORIZON
 from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.layout_generator import COUNTER, POT, TYPE_TO_CODE
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, PlayerState
 
 
 class GoalSpaceEnum(IntEnum):
-    SHARED_EPISODE = 0
+    OVERALL_GOAL = 0
     PLACE_ONION = 1
     START_COOKING = 2
     PICKUP_SOUP = 3
+    DELIVER_SOUP = 4
+    PICKUP_DISH = 5
 
     @classmethod
     def get_goal_space_name(cls, value: int) -> str:
@@ -22,9 +24,8 @@ class GoalSpaceEnum(IntEnum):
     def get_goal_space_value(cls, name: str) -> int:
         return cls[name].value if name in cls._member_map_ else -1
 
-
 class Goal:
-    def __init__(self, goal_id: GoalSpaceEnum, fitness_fn, success_fn=None):
+    def __init__(self, goal_id: GoalSpaceEnum, fitness_fn, success_fn):
         self.goal_id = goal_id
         self.fitness = fitness_fn
         self.success = success_fn
@@ -114,7 +115,8 @@ def pickup_soup_space() -> Goal:
     pickup_dish = pick_object_space(GoalSpaceEnum.PICKUP_SOUP, ItemCode.DISH.value)
 
     def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
-                agent_id: int, mdp: OvercookedGridworld):
+                agent_id: int,
+                mdp: OvercookedGridworld):  # TODO the goal spaces need to have a start time and end time to calculate fitness
         player: PlayerState = state.players[agent_id]
         held = player.get_object() if player.has_object() else None
 
@@ -131,19 +133,6 @@ def pickup_soup_space() -> Goal:
         return False
 
     return Goal(GoalSpaceEnum.PICKUP_SOUP, fitness_fn=fitness, success_fn=success)
-
-
-def shared_episode_space() -> Goal:
-    def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
-                agent_id: int, mdp: OvercookedGridworld):
-        return 0.0  # The fitness is based on the rewards from the environment, not the goal space
-
-    def success(agent_id: int, state: OvercookedState, previous_state: OvercookedState,
-                mdp: OvercookedGridworld):
-        return False
-
-    return Goal(GoalSpaceEnum.SHARED_EPISODE, fitness_fn=fitness, success_fn=success)
-
 
 def create_goal_spaces() -> List[Goal]:
     return [

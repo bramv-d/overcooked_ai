@@ -4,11 +4,14 @@ from typing import List
 
 import numpy as np
 
-from IMGEP_agent.agent.goals.goal_spaces import Goal
-from IMGEP_agent.agent.helpers.obs_to_vect import OBS_VEC_SIZE
-from IMGEP_agent.agent.knowledge_base import KnowledgeBase
-from IMGEP_agent.agent.neuro_policy.high_level_actions import HighLevelActions
-from IMGEP_agent.hyper_parameters import ADAPTIVE_NOISE_STD, NEURO_POLICY_HIDDEN_DIM, PARENT_POLICY_RECENT_RECORDS
+from HiMAGE.agent.goals.goal_spaces import Goal, GoalSpaceEnum
+from HiMAGE.agent.helpers.obs_to_vect import GOAL_POLICY_INPUT_VECTOR_SIZE
+from HiMAGE.agent.knowledge_base import KnowledgeBase
+from HiMAGE.agent.neuro_policy.high_level_actions import HighLevelActions
+from HiMAGE.hyper_parameters import ACTION_POLICY_ADAPTIVE_NOISE_STD, ACTION_POLICY_HIDDEN_DIM, \
+    ACTION_POLICY_PARENT_RECENT_RECORDS, \
+    GOAL_POLICY_ADAPTIVE_NOISE_STD, GOAL_POLICY_HIDDEN_DIM, \
+    GOAL_POLICY_PARENT_RECENT_RECORDS
 
 
 def he_init(fan_in: int, fan_out: int) -> np.ndarray:
@@ -18,17 +21,16 @@ def he_init(fan_in: int, fan_out: int) -> np.ndarray:
 
 
 class NeuroPolicy:
-    def __init__(self, goal_spaces: List[Goal], theta: np.ndarray | None = None):
-
-        self.inp_dim = OBS_VEC_SIZE
-        self.hidden_dim = NEURO_POLICY_HIDDEN_DIM
-        self.num_tokens = len(HighLevelActions) + len(goal_spaces)
+    def __init__(self, input_dimension, hidden_dim, output_token, theta: np.ndarray | None = None):
+        self.inp_dim = input_dimension
+        self.hidden_dim = hidden_dim
+        self.output_token = output_token
 
         if theta is None:  # fresh initialization
             W1 = he_init(self.inp_dim, self.hidden_dim)
             b1 = np.zeros(self.hidden_dim, dtype=np.float32)
-            W2 = he_init(self.hidden_dim, self.num_tokens)
-            b2 = np.zeros(self.num_tokens, dtype=np.float32)
+            W2 = he_init(self.hidden_dim, self.output_token)
+            b2 = np.zeros(self.output_token, dtype=np.float32)
             self.theta = self._pack(W1, b1, W2, b2)
         else:  # copy provided weights
             self.theta = theta.astype(np.float32)
@@ -50,7 +52,7 @@ class NeuroPolicy:
             p = np.exp(z - z.max(), dtype=np.float32)
             p /= p.sum()
 
-            return int(np.random.choice(self.num_tokens, p=p))
+            return int(np.random.choice(self.output_token, p=p))
 
     # ────────────────────────── helpers ───────────────────────────────
     def _pack(self, W1, b1, W2, b2) -> np.ndarray:
@@ -58,7 +60,7 @@ class NeuroPolicy:
 
     def _unpack(self):
         """Recover weight matrices from flat θ."""
-        D, H, A = self.inp_dim, self.hidden_dim, self.num_tokens
+        D, H, A = self.inp_dim, self.hidden_dim, self.output_token
         i = 0
         W1 = self.theta[i:i + D * H].reshape(D, H)
         i += D * H
@@ -70,32 +72,47 @@ class NeuroPolicy:
         return W1, b1, W2, b2
 
 
-class GoalSpaceNeuroPolicy:
-    """
-    A NeuroPolicy that is specialized for a specific goal space.
-    """
-
-    def __init__(self, goal: Goal, neuro_policy: NeuroPolicy, exploit: bool):
-        self.goal = goal
-        self.neuro_policy = neuro_policy
-        self.exploit = exploit
-
-
-def get_neuro_policy(selected_goal: Goal, kb: KnowledgeBase, goal_spaces: List[Goal], exploit: bool) -> NeuroPolicy:
-    # TODO include the shared episode reward into the policy selection.
-    # TODO this should probably be done on reset. The shared episode reward should be a scalar from 0 tot 1 depending on the 50 recent episodes shared reward
-
-    if not kb.nearest(selected_goal, 1):
-        return NeuroPolicy(goal_spaces)
-    rec = kb.nearest(selected_goal, PARENT_POLICY_RECENT_RECORDS)
+def get_neuro_policy(input_dimension, hidden_dim, output_token, selected_goal_id: int, kb: KnowledgeBase, exploit: bool,
+                     parent_policy_recent_records, adaptive_noise_std) -> NeuroPolicy:
+    if not kb.nearest(selected_goal_id, 1):
+        return NeuroPolicy(input_dimension, hidden_dim, output_token)
+    rec = kb.nearest(selected_goal_id, parent_policy_recent_records)
     if exploit:
         # exploit: use the best policy from the knowledge base
         best_idx = np.argmax([r.fitness for r in rec])
-        return NeuroPolicy(theta=rec[best_idx].theta, goal_spaces=goal_spaces)
+        return NeuroPolicy(input_dimension, hidden_dim, output_token, theta=rec[best_idx].theta)
 
     # explore: pick a random parent policy to mutate from
     parent_policy = random.choice(rec)
-    adaptive_noise = ADAPTIVE_NOISE_STD / (
-            parent_policy.intrinsic_reward + ADAPTIVE_NOISE_STD)  # more noise when progress is low
+    adaptive_noise = adaptive_noise_std / (
+            parent_policy.intrinsic_reward + adaptive_noise_std)  # more noise when progress is low
     child_theta = parent_policy.theta + np.random.normal(0, adaptive_noise, parent_policy.theta.shape)
-    return NeuroPolicy(theta=child_theta, goal_spaces=goal_spaces)
+    return NeuroPolicy(input_dimension, hidden_dim, output_token, theta=child_theta)
+
+
+def get_action_policy(kb: KnowledgeBase, exploit: bool, selected_goal_id: int) -> NeuroPolicy:
+    return get_neuro_policy(GOAL_POLICY_INPUT_VECTOR_SIZE,
+                            ACTION_POLICY_HIDDEN_DIM,
+                            len(HighLevelActions),
+                            selected_goal_id=selected_goal_id,
+                            kb=kb,
+                            exploit=exploit,
+                            parent_policy_recent_records=ACTION_POLICY_PARENT_RECENT_RECORDS,
+                            adaptive_noise_std=ACTION_POLICY_ADAPTIVE_NOISE_STD)
+
+
+def get_goal_policy(kb: KnowledgeBase, goal_spaces: List[Goal], exploit: bool) -> NeuroPolicy:
+    return get_neuro_policy(GOAL_POLICY_INPUT_VECTOR_SIZE,
+                            GOAL_POLICY_HIDDEN_DIM,
+                            len(goal_spaces),
+                            selected_goal_id=GoalSpaceEnum.OVERALL_GOAL,
+                            kb=kb,
+                            exploit=exploit,
+                            parent_policy_recent_records=GOAL_POLICY_PARENT_RECENT_RECORDS,
+                            adaptive_noise_std=GOAL_POLICY_ADAPTIVE_NOISE_STD)
+
+
+class ActionPolicy:
+    def __init__(self, neuro_policy: NeuroPolicy, goal: Goal):
+        self.neuro_policy = neuro_policy
+        self.goal = goal

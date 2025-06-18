@@ -10,7 +10,7 @@ def is_reachable(mp: MotionPlanner, pos_and_or, target_locations) -> float:
     return 1.0 if mp.min_cost_to_feature(pos_and_or, target_locations) != np.inf else 0.0
 
 
-def get_action_policy_input_vector(
+def get_goal_policy_input_vector(
         state: OvercookedState,
         mdp: OvercookedGridworld,
         mp: MotionPlanner,
@@ -49,4 +49,4 @@ def get_action_policy_input_vector(
     return feat  # shape = (5 + 8,) = (13,)
 
 
-GOAL_POLICY_INPUT_VECTOR_SIZE = len(ItemCode) + 8
+OBS_VEC_SIZE = len(ItemCode) + 8
