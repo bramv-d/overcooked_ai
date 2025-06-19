@@ -7,8 +7,8 @@ from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 
-from HiMAGE.agent.goals.goal_spaces import GoalSpaceEnum
-from HiMAGE.agent.knowledge_base import RolloutRecord
+from IMGEP_agent.agent.goals.goal_spaces import GoalSpaceEnum
+from IMGEP_agent.agent.knowledge_base import RolloutRecord
 
 DEFAULT_IMG_PATH = "fitness_plot.png"
 
@@ -36,7 +36,7 @@ def plot_fitness(records, output_path, smoothing_window, goal_space_colors):
 
     for rec in records:
         if rec.exploit:
-            label = GoalSpaceEnum.get_goal_space_name(rec.goal_id)
+            label = GoalSpaceEnum.get_goal_space_name(rec.goal_space_id)
             fitness_by_space[label].append((rec.rollout_idx, rec.fitness))
             ir_by_space[label].append((rec.rollout_idx, rec.intrinsic_reward))
 
@@ -86,7 +86,7 @@ def plot_shared_episode_reward(records, output_path, smoothing_window, goal_spac
 
     for rec in records:
         if rec.exploit:
-            label = rec.goal_id
+            label = rec.goal_space_id
             shared_reward = rec.shared_episode_reward
             shared_reward_by_space[label].append((rec.rollout_idx, shared_reward))
 
@@ -134,7 +134,7 @@ def plot_goalspace_distribution(records, output_path, num_bins, goal_space_color
     all_idxs = set()
     for rec in seen.values():
         idx = rec.rollout_idx
-        label = GoalSpaceEnum.get_goal_space_name(rec.goal_id)
+        label = GoalSpaceEnum.get_goal_space_name(rec.goal_space_id)
         per_rollout[idx][label] += 1
         all_idxs.add(idx)
 
@@ -197,7 +197,7 @@ def make_graphs():
         print(f"✅ Found {path}")
         records = load_records(path)
 
-        all_spaces = sorted({rec.goal_id for rec in records})
+        all_spaces = sorted({rec.goal_space_id for rec in records})
         goal_space_colors = get_goal_space_colors(all_spaces)
 
         plot_fitness(records,
@@ -226,7 +226,7 @@ def get_statistics(pickle_path):
     filtered = list(rollout_records.values())
 
     total = len(filtered)
-    goal_space_counts = Counter(rec.goal_id for rec in filtered)
+    goal_space_counts = Counter(rec.goal_space_id for rec in filtered)
     idxs = [rec.rollout_idx for rec in filtered]
     print("\n📊 Rollout Statistics")
     print(f"Total rollouts: {total}")
@@ -238,8 +238,8 @@ def get_statistics(pickle_path):
     fitness_by = defaultdict(list)
     ir_by = defaultdict(list)
     for rec in filtered:
-        fitness_by[rec.goal_id].append(rec.fitness)
-        ir_by[rec.goal_id].append(rec.intrinsic_reward)
+        fitness_by[rec.goal_space_id].append(rec.fitness)
+        ir_by[rec.goal_space_id].append(rec.intrinsic_reward)
 
     avg_fit = {s: np.mean(v) for s, v in fitness_by.items()}
     avg_ir = {s: np.mean(v) for s, v in ir_by.items()}

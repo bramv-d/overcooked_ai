@@ -4,10 +4,12 @@ from typing import List
 
 import numpy as np
 
+from IMGEP_agent.agent.goals.goal_spaces import Goal
+
 
 @dataclass
 class RolloutRecord:
-    goal_id: int  # goal space ID
+    goal_space_id: int  # goal space ID, e.g., "PLACE_OBJECT", "PICK_OBJECT", etc.
     theta: np.ndarray  # policy params you executed
     fitness: float
     intrinsic_reward: float
@@ -26,17 +28,16 @@ class KnowledgeBase:
     # ---- public API ---------------------------------------------------------
 
     def add_record(self, rec: RolloutRecord):
+        """Insert a new experiment and flag index for rebuild."""
         self.buffer.append(rec)
-        # With adding records to the db also remove the oldest records if the buffer exceeds a certain size
 
-
-    def nearest(self, goal_id: int, k: int, exploit: bool | None = None) -> List[RolloutRecord] | None:
+    def nearest(self, goal: Goal, k: int, exploit: bool | None = None) -> List[RolloutRecord] | None:
         """
         Return the db_ids(s) of the most similar past experiment.
         """
         nearest = []
         for index, g in enumerate(reversed(self.buffer)):  # Iterate in reverse order
-            if g.goal_id == goal_id and (exploit is None or g.exploit == exploit):
+            if g.goal_space_id == goal.goal_id and (exploit is None or g.exploit == exploit):
                 nearest.append(g)
             if len(nearest) == k:
                 break
@@ -44,6 +45,18 @@ class KnowledgeBase:
 
     def __len__(self):
         return len(self.buffer)
+
+    def well_performing_policies(self, fitness_threshold, record_amount, exploit) -> List[RolloutRecord]:
+        """
+        Return a list of records with fitness above the threshold
+        """
+        well_performing = []
+        for record in reversed(self.buffer):
+            if record.fitness >= fitness_threshold and record.exploit == exploit:
+                well_performing.append(record)
+            if len(well_performing) == record_amount:
+                break
+        return well_performing
 
     # --- save & load ------------------------------------------------------------
     def save_buffer(self, path: str):
