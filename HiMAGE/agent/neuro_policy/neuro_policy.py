@@ -4,8 +4,9 @@ from typing import List
 
 import numpy as np
 
+from HiMAGE.agent.goals.goal_policy_input_vector import GOAL_POLICY_INPUT_VECTOR_SIZE
 from HiMAGE.agent.goals.goal_spaces import Goal, GoalSpaceEnum
-from HiMAGE.agent.helpers.obs_to_vect import GOAL_POLICY_INPUT_VECTOR_SIZE
+from HiMAGE.agent.helpers.action_policy_input_vector import ACTION_POLICY_INPUT_VECTOR
 from HiMAGE.agent.knowledge_base import KnowledgeBase
 from HiMAGE.agent.neuro_policy.high_level_actions import HighLevelActions
 from HiMAGE.hyper_parameters import ACTION_POLICY_ADAPTIVE_NOISE_STD, ACTION_POLICY_HIDDEN_DIM, \
@@ -91,7 +92,7 @@ def get_neuro_policy(input_dimension, hidden_dim, output_token, selected_goal_id
 
 
 def get_action_policy(kb: KnowledgeBase, exploit: bool, selected_goal_id: int) -> NeuroPolicy:
-    return get_neuro_policy(GOAL_POLICY_INPUT_VECTOR_SIZE,
+    return get_neuro_policy(ACTION_POLICY_INPUT_VECTOR,
                             ACTION_POLICY_HIDDEN_DIM,
                             len(HighLevelActions),
                             selected_goal_id=selected_goal_id,

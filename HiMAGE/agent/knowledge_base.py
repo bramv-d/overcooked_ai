@@ -7,7 +7,7 @@ import numpy as np
 
 @dataclass
 class RolloutRecord:
-    goal_id: int  # goal space ID, e.g., "PLACE_OBJECT", "PICK_OBJECT", etc.
+    goal_id: int  # goal space ID
     theta: np.ndarray  # policy params you executed
     fitness: float
     intrinsic_reward: float
@@ -26,8 +26,9 @@ class KnowledgeBase:
     # ---- public API ---------------------------------------------------------
 
     def add_record(self, rec: RolloutRecord):
-        """Insert a new experiment and flag index for rebuild."""
         self.buffer.append(rec)
+        # With adding records to the db also remove the oldest records if the buffer exceeds a certain size
+
 
     def nearest(self, goal_id: int, k: int, exploit: bool | None = None) -> List[RolloutRecord] | None:
         """

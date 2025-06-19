@@ -50,7 +50,7 @@ for roll in range(ROLLOUTS):
 
     # -------- finish roll-out bookkeeping -------------------------------
     for ag in agents:
-        ag.finish_rollout(state, info)
+        ag.finish_rollout(info)
 
     if roll == ROLLOUTS - 1:
         create_gif(ep_states, mdp, roll, True)

@@ -2,7 +2,7 @@ import numpy as np
 
 from HiMAGE.agent.helpers.item_codes import ItemCode
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, PlayerState
-from overcooked_ai_py.planning.planners import MotionPlanner
+from overcooked_ai_py.planning.planners import MediumLevelActionManager, MotionPlanner
 
 
 def is_reachable(mp: MotionPlanner, pos_and_or, target_locations) -> float:
@@ -14,6 +14,7 @@ def get_action_policy_input_vector(
         state: OvercookedState,
         mdp: OvercookedGridworld,
         mp: MotionPlanner,
+        mlam: MediumLevelActionManager,
         player_id: int,
 ) -> np.ndarray:
     me: PlayerState = state.players[player_id]
@@ -46,7 +47,7 @@ def get_action_policy_input_vector(
         d_serving,
     ], dtype=np.float32)
 
-    return feat  # shape = (5 + 8,) = (13,)
+    return feat
 
 
-GOAL_POLICY_INPUT_VECTOR_SIZE = len(ItemCode) + 8
+ACTION_POLICY_INPUT_VECTOR = len(ItemCode) + 8
