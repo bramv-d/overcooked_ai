@@ -1,6 +1,7 @@
 import copy
 
 from IMGEP_agent.agent.agent import IMGEPAgent
+from IMGEP_agent.agent.knowledge_base import KnowledgeBase
 from IMGEP_agent.hyper_parameters import HORIZON, LAYOUT_ID, LOAD_KB, ROLLOUTS
 from IMGEP_agent.visualise.create_gif import create_gif
 from IMGEP_agent.visualise.visualise import make_graphs
@@ -30,13 +31,12 @@ mlam = env.mlam
 agents = [IMGEPAgent(env, mdp, agent_id) for agent_id in range(2)]
 if LOAD_KB:
     for ag in agents:
-        ag.kb.load_buffer("agent/kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
+        kb_path = f"agent/kb/buffer_rollouts{ag.agent_id}.npz"
+        ag.kb = KnowledgeBase.load_buffer(kb_path)
         ag.update_goal_space_emas()
 # ---------------------------------------------------------------- run one roll-out
 
-ROLL_OUTS = ROLLOUTS
-
-for roll in range(ROLL_OUTS):
+for roll in range(ROLLOUTS):
     print(roll)
     env.reset(regen_mdp=True)
 
@@ -52,10 +52,10 @@ for roll in range(ROLL_OUTS):
 
     # -------- finish roll-out bookkeeping -------------------------------
     for ag in agents:
-        ag.finish_rollout(state, info)
+        ag.finish_rollout(info)
 
-    if roll == ROLL_OUTS - 1:
+    if roll == ROLLOUTS - 1:
         create_gif(ep_states, mdp, roll, True)
 
-for ag in agents: ag.kb.save_buffer("agent/kb/buffer_rollouts" + str(ag.agent_id) + ".pkl")
+for ag in agents: ag.kb.save_buffer("agent/kb/buffer_rollouts" + str(ag.agent_id))
 make_graphs()

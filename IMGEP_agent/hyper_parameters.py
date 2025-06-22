@@ -1,6 +1,6 @@
 # ROLLOUT PARAMETERS
 HORIZON = 100  # number of steps to run per rollout
-ROLLOUTS = 500  # number of rollouts to run
+ROLLOUTS = 1000  # number of rollouts to run
 LAYOUT_ID = 22  # layout index to use from the layouts list in overcooked_ai_py
 LOAD_KB = True  # whether to load the knowledge base from a file or not
 
@@ -16,3 +16,7 @@ PARENT_POLICY_RECENT_RECORDS = 50  # number of recent records to consider when s
 GOAL_EMA_K = 50  # How many past exploit records to include in the EMA
 GOAL_EMA_ALPHA = 0.6  # Smoothing factor for the EMA (0 < ALPHA <= 1)
 GOAL_GREEDY_PROB = 0.8  # Probability of selecting the greedy goal space
+N_RECENT = 100
+BONUS_CAP = 0.10  # maximum bonus when we have 0 records
+BONUS_SLOPE = 0.01  # bonus decays 0.01 per missing record
+BONUS_FLOOR = 10  # apply bonus only when len(records) < 10

@@ -1,82 +1,168 @@
-import pickle
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 import numpy as np
+from numpy.typing import NDArray
 
 from IMGEP_agent.agent.goals.goal_spaces import Goal
+from IMGEP_agent.agent.helpers.obs_to_vect import OBS_VEC_SIZE
+from IMGEP_agent.agent.neuro_policy.high_level_actions import HighLevelActions
+from IMGEP_agent.hyper_parameters import NEURO_POLICY_HIDDEN_DIM
 
 
 @dataclass
 class RolloutRecord:
-    goal_space_id: int  # goal space ID, e.g., "PLACE_OBJECT", "PICK_OBJECT", etc.
-    theta: np.ndarray  # policy params you executed
+    goal_space_id: int
+    theta: NDArray[np.floating]  # policy parameters
     fitness: float
     intrinsic_reward: float
-    exploit: bool = False  # True if this was an exploit step, False if it was exploration
-    rollout_idx: int = 0  # episode number, used to track the order of experiments
-
+    exploit: bool = False
+    rollout_idx: int = 0
 
 class KnowledgeBase:
     """
-    In-memory buffer + KD-Tree index for nearest-neighbour queries on (context, outcome).
+    In-memory buffer implemented with **fixed-width NumPy arrays** for
+    lightning-fast filtering on `goal_space_id`, `exploit`, `fitness`, etc.
+
+    ▸  Theta *must* have the same length (`param_dim`) for every record.
+       If that is not true in your set-up, keep using the list version or
+       store a flattened/ padded copy of theta.
     """
 
-    def __init__(self):
-        self.buffer: List[RolloutRecord] = []
+    # --------------------------------------------------------------------- #
+    # construction / memory management
+    # --------------------------------------------------------------------- #
+    def __init__(self, goal_spaces_length, init_capacity: int = 2048) -> None:
+        num_tokens = len(HighLevelActions) + goal_spaces_length
+        self.param_dim = (OBS_VEC_SIZE * NEURO_POLICY_HIDDEN_DIM  # W1
+                          + NEURO_POLICY_HIDDEN_DIM  # b1
+                          + NEURO_POLICY_HIDDEN_DIM * num_tokens  # W2
+                          + num_tokens)  # b2
+        self._capacity = init_capacity
+        self._size = 0
 
-    # ---- public API ---------------------------------------------------------
+        # allocate empty arrays up-front so that `add_record` is O(1) amortised
+        self._goal_id = np.empty(init_capacity, dtype=np.int32)
+        self._fitness = np.empty(init_capacity, dtype=np.float32)
+        self._intr_reward = np.empty(init_capacity, dtype=np.float32)
+        self._exploit = np.empty(init_capacity, dtype=bool)
+        self._rollout_idx = np.empty(init_capacity, dtype=np.int32)
+        self._theta = np.empty((init_capacity, self.param_dim),
+                               dtype=np.float32)
 
-    def add_record(self, rec: RolloutRecord):
-        """Insert a new experiment and flag index for rebuild."""
-        self.buffer.append(rec)
+    def _grow(self) -> None:
+        """Double the storage capacity (called automatically)."""
+        new_cap = self._capacity * 2
+        self._goal_id = np.resize(self._goal_id, new_cap)
+        self._fitness = np.resize(self._fitness, new_cap)
+        self._intr_reward = np.resize(self._intr_reward, new_cap)
+        self._exploit = np.resize(self._exploit, new_cap)
+        self._rollout_idx = np.resize(self._rollout_idx, new_cap)
+        self._theta = np.resize(self._theta,
+                                (new_cap, self.param_dim))
+        self._capacity = new_cap
+
+    # --------------------------------------------------------------------- #
+    # public API
+    # --------------------------------------------------------------------- #
+    def add_record(self, rec: RolloutRecord) -> None:
+        """Append a new rollout to the buffer (O(1) amortised)."""
+        if self._size == self._capacity:
+            self._grow()
+
+        i = self._size
+        self._goal_id[i] = rec.goal_space_id
+        self._fitness[i] = rec.fitness
+        self._intr_reward[i] = rec.intrinsic_reward
+        self._exploit[i] = rec.exploit
+        self._rollout_idx[i] = rec.rollout_idx
+        self._theta[i] = rec.theta
+
+        self._size += 1
 
     def nearest(
             self,
             k: int,
-            exploit: bool | None = None,
-            goal: Goal | None = None
-    ) -> list[RolloutRecord]:
+            exploit: Optional[bool] = None,
+            goal: Optional[Goal] = None,
+    ) -> List[RolloutRecord]:
         """
-        Return the k most-recent rollout records that satisfy the optional
-        `goal` and `exploit` filters (newest first).
+        Return the **k most-recent** records matching the (optional) filters.
+        Executed entirely in NumPy, then converted back to dataclass objects.
         """
-        nearest: list[RolloutRecord] = []
 
-        for rec in reversed(self.buffer):  # newest → oldest
-            # ---------- filter gates ----------
-            if exploit is not None and rec.exploit != exploit:
-                continue
-            if goal is not None and rec.goal_space_id != goal.goal_id:
-                continue
-            # ---------- passed all gates ----------
-            nearest.append(rec)
-            if len(nearest) == k:
-                break
+        n = self._size
+        if n == 0 or k <= 0:
+            return []
 
-        return nearest
+        # build boolean mask: start with all True
+        mask = np.ones(n, dtype=bool)
+        if exploit is not None:
+            mask &= (self._exploit[:n] == exploit)
+        if goal is not None:
+            mask &= (self._goal_id[:n] == goal.goal_id)
 
-    def __len__(self):
-        return len(self.buffer)
+        # indices of rows that match, newest → oldest
+        idx = np.flatnonzero(mask)[::-1]  # reverse chronological
+        idx = idx[:k]  # keep at most k
 
-    def well_performing_policies(self, fitness_threshold, record_amount, exploit) -> List[RolloutRecord]:
+        return [self._make_record(i) for i in idx]
+
+    # ------------------------------------------------------------------ #
+    # utilities
+    # ------------------------------------------------------------------ #
+    def __len__(self) -> int:
+        return self._size
+
+    def _make_record(self, i: int) -> RolloutRecord:
+        """Internal helper to rebuild a RolloutRecord dataclass."""
+        return RolloutRecord(
+            goal_space_id=int(self._goal_id[i]),
+            theta=self._theta[i].copy(),  # copy to keep immutable
+            fitness=float(self._fitness[i]),
+            intrinsic_reward=float(self._intr_reward[i]),
+            exploit=bool(self._exploit[i]),
+            rollout_idx=int(self._rollout_idx[i]),
+        )
+
+    # ------------------------------------------------------------------ #
+    # save & load
+    # ------------------------------------------------------------------ #
+    def save_buffer(self, path: str) -> None:
         """
-        Return a list of records with fitness above the threshold
+        Saves the raw NumPy arrays – far smaller & faster than pickling
+        a Python list of objects.
         """
-        well_performing = []
-        for record in reversed(self.buffer):
-            if record.fitness >= fitness_threshold and record.exploit == exploit:
-                well_performing.append(record)
-            if len(well_performing) == record_amount:
-                break
-        return well_performing
+        np.savez_compressed(
+            path,
+            param_dim=self.param_dim,
+            size=self._size,
+            goal_id=self._goal_id[:self._size],
+            fitness=self._fitness[:self._size],
+            intr_reward=self._intr_reward[:self._size],
+            exploit=self._exploit[:self._size],
+            rollout_idx=self._rollout_idx[:self._size],
+            theta=self._theta[:self._size],
+        )
 
-    # --- save & load ------------------------------------------------------------
-    def save_buffer(self, path: str):
-        """Save the full buffer to disk as a pickle file."""
-        with open(path, "wb") as f:
-            pickle.dump(self.buffer, f)
+    @classmethod
+    def load_buffer(cls, path: str) -> "KnowledgeBase":
+        data = np.load(path, allow_pickle=True)
 
-    def load_buffer(self, path: str):
-        with open(path, "rb") as f:
-            self.buffer = pickle.load(f)
+        # 1️⃣  Build an *empty* KB with the **correct** param_dim, not “goal_spaces_length”
+        kb = cls(goal_spaces_length=0)  # dummy
+        kb.param_dim = int(data["param_dim"])  # ← overwrite
+
+        # 2️⃣  Allocate arrays with that exact width
+        kb._theta = np.empty((int(data["size"]), kb.param_dim), dtype=np.float32)
+
+        # ---- copy payload ---------------------------------------------------
+        kb._size = int(data["size"])
+        kb._goal_id = data["goal_id"]
+        kb._fitness = data["fitness"]
+        kb._intr_reward = data["intr_reward"]
+        kb._exploit = data["exploit"]
+        kb._rollout_idx = data["rollout_idx"]
+        kb._theta[:] = data["theta"]
+        kb._capacity = kb._size
+        return kb

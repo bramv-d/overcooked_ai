@@ -82,9 +82,6 @@ class GoalSpaceNeuroPolicy:
 
 
 def get_neuro_policy(selected_goal: Goal, kb: KnowledgeBase, goal_spaces: List[Goal], exploit: bool) -> NeuroPolicy:
-    # TODO include the shared episode reward into the policy selection.
-    # TODO this should probably be done on reset. The shared episode reward should be a scalar from 0 tot 1 depending on the 50 recent episodes shared reward
-
     if not kb.nearest(goal=selected_goal, k=1):
         return NeuroPolicy(goal_spaces)
     rec = kb.nearest(goal=selected_goal, k=PARENT_POLICY_RECENT_RECORDS)

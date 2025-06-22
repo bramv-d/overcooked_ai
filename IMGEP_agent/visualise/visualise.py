@@ -1,70 +1,104 @@
-import math
+# make_graphs.py
+# ---------------------------------------------------------------------------
+# Faster plotting & statistics for IMGEP roll-out buffers
+# ---------------------------------------------------------------------------
 import os
-import pickle
-from collections import Counter, defaultdict
-from typing import List
+from collections import Counter
+from typing import Dict, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from IMGEP_agent.agent.goals.goal_spaces import GoalSpaceEnum
-from IMGEP_agent.agent.knowledge_base import RolloutRecord
-
-DEFAULT_IMG_PATH = "fitness_plot.png"
 
 
-def load_records(path):
-    """Load ExperimentRecord list from .pkl file"""
-    with open(path, "rb") as f:
-        return pickle.load(f)
+# ------------------- I/O ----------------------------------------------------
 
 
-# ------------------ smoothing helpers ------------------------
+def _load_npz(path: str) -> Dict[str, np.ndarray]:
+    """Zero-copy load of the new compressed buffer."""
+    arr = np.load(path, mmap_mode='r', allow_pickle=False)
+    return {
+        "goal_id": arr["goal_id"].astype(np.int32, copy=False),
+        "theta": arr["theta"],  # NOT used for plots
+        "fitness": arr["fitness"].astype(np.float32, copy=False),
+        "intr_reward": arr["intr_reward"].astype(np.float32, copy=False),
+        "exploit": arr["exploit"].astype(bool, copy=False),
+        "rollout_idx": arr["rollout_idx"].astype(np.int32, copy=False),
+        "size": int(arr["size"]),
+    }
 
-def moving_average(values, window_size):
-    """Simple moving average. Keeps line smooth."""
-    if len(values) < window_size:
-        return values
-    return np.convolve(values, np.ones(window_size) / window_size, mode='valid')
+
+def load_buffer(path: str) -> Dict[str, np.ndarray]:
+    """Return a dict of parallel NumPy arrays plus 'size'."""
+    return _load_npz(path)
 
 
-# ------------------ plot functions ----------------------------
+# ------------------- utilities ---------------------------------------------
 
-def plot_fitness(records, output_path, smoothing_window, goal_space_colors):
-    fitness_by_space = defaultdict(list)
-    ir_by_space = defaultdict(list)
 
-    for rec in records:
-        if rec.exploit:
-            label = GoalSpaceEnum.get_goal_space_name(rec.goal_space_id)
-            fitness_by_space[label].append((rec.rollout_idx, rec.fitness))
-            ir_by_space[label].append((rec.rollout_idx, rec.intrinsic_reward))
+def moving_average(y: np.ndarray, k: int) -> np.ndarray:
+    if k <= 1 or y.size < k:
+        return y
+    kernel = np.ones(k, dtype=np.float32) / k
+    return np.convolve(y, kernel, mode="valid")
 
-    if not fitness_by_space:
-        print("❌ No fitness data found.")
+
+def _unique_sorted(arr: np.ndarray) -> np.ndarray:
+    """Return unique values, sorted (NumPy does this in C)."""
+    return np.unique(arr)
+
+
+def _goal_name_array(goal_ids: np.ndarray) -> np.ndarray:
+    """Vectorised mapping goal_id -> human-readable name."""
+    # NumPy cannot broadcast Python calls, we build a lookup once:
+    unique_ids = _unique_sorted(goal_ids)
+    lut = np.array([GoalSpaceEnum.get_goal_space_name(g) for g in unique_ids])
+    # Use searchsorted to vectorise the mapping
+    idx = np.searchsorted(unique_ids, goal_ids)
+    return lut[idx]
+
+
+def get_goal_space_colors(goal_names: np.ndarray) -> Dict[str, Tuple[float, float, float]]:
+    palette = plt.cm.tab10.colors
+    unique_names = _unique_sorted(goal_names)
+    return {name: palette[i % len(palette)] for i, name in enumerate(unique_names)}
+
+
+# ------------------- plotting ----------------------------------------------
+
+
+def plot_fitness(data, out_path: str, smooth_k: int, colors):
+    gid = data["goal_id"]
+    fit = data["fitness"]
+    ir = data["intr_reward"]
+    idx = data["rollout_idx"]
+    mask = data["exploit"]
+
+    if not mask.any():
+        print("❌ No exploit episodes → no fitness curves.")
         return
 
+    gid_e, fit_e, ir_e, idx_e = gid[mask], fit[mask], ir[mask], idx[mask]
+    names = _goal_name_array(gid_e)
+
     plt.figure(figsize=(11, 6))
-    ax_f = plt.gca()
-    ax_ir = ax_f.twinx()
+    ax_f, ax_ir = plt.gca(), plt.gca().twinx()
 
-    for label in sorted(fitness_by_space):
-        fitness_sorted = sorted(fitness_by_space[label])
-        ir_sorted = sorted(ir_by_space[label])
+    for name in _unique_sorted(names):
+        sel = names == name
+        x = idx_e[sel]
+        order = x.argsort()
+        x = x[order]
+        y_fit = fit_e[sel][order]
+        y_ir = ir_e[sel][order]
 
-        x_fit, y_fit = zip(*fitness_sorted)
-        x_ir, y_ir = zip(*ir_sorted)
-
-        y_fit_smooth = moving_average(y_fit, smoothing_window)
-        y_ir_smooth = moving_average(y_ir, smoothing_window)
-
-        x_fit = x_fit[-len(y_fit_smooth):]
-        x_ir = x_ir[-len(y_ir_smooth):]
-
-        color = goal_space_colors[label]
-
-        ax_f.plot(x_fit, y_fit_smooth, color=color, label=f"{label} fitness")
-        ax_ir.plot(x_ir, y_ir_smooth, color=color, linestyle=":", label=f"{label} IR")
+        ax_f.plot(x[-len(moving_average(y_fit, smooth_k)):],
+                  moving_average(y_fit, smooth_k),
+                  color=colors[name], label=f"{name} fitness")
+        ax_ir.plot(x[-len(moving_average(y_ir, smooth_k)):],
+                   moving_average(y_ir, smooth_k),
+                   color=colors[name], linestyle=":", label=f"{name} IR")
 
     ax_f.set_xlabel("Roll-out index")
     ax_f.set_ylabel("Fitness (smoothed)")
@@ -77,180 +111,132 @@ def plot_fitness(records, output_path, smoothing_window, goal_space_colors):
     ax_f.legend(lines + lines2, labels + labels2, loc="upper left", fontsize=9)
 
     plt.tight_layout()
-    plt.savefig(output_path)
-    print(f"✅ Saved line plot to {output_path}")
+    plt.savefig(out_path)
+    print(f"✅ Saved line plot → {out_path}")
 
 
-def plot_shared_episode_reward(records, output_path, smoothing_window, goal_space_colors):
-    shared_reward_by_space = defaultdict(list)
+def plot_goalspace_distribution(data, out_path: str, num_bins: int, colors):
+    gid = data["goal_id"]
+    idx = data["rollout_idx"]
+    mask = data["exploit"]
 
-    for rec in records:
-        if rec.exploit:
-            label = rec.goal_space_id
-            shared_reward = rec.shared_episode_reward
-            shared_reward_by_space[label].append((rec.rollout_idx, shared_reward))
-
-    if not shared_reward_by_space:
-        print("❌ No shared_episode_reward data found.")
+    if not mask.any():
+        print("❌ No exploit episodes → no distribution plot.")
         return
 
-    plt.figure(figsize=(11, 6))
-    ax = plt.gca()
+    gid_e, idx_e = gid[mask], idx[mask]
+    names = _goal_name_array(gid_e)
+    unique_names = _unique_sorted(names)
 
-    for label in sorted(shared_reward_by_space):
-        reward_sorted = sorted(shared_reward_by_space[label])
-        x_vals, y_vals = zip(*reward_sorted)
+    # 1) sort by rollout index once
+    order = idx_e.argsort()
+    idx_sorted = idx_e[order]
+    names_sorted = names[order]
 
-        y_smooth = moving_average(y_vals, smoothing_window)
-        x_vals = x_vals[-len(y_smooth):]
+    # 2) make bins
+    total = idx_sorted.size
+    bin_edges = np.linspace(0, total, num_bins + 1, dtype=int)
 
-        color = goal_space_colors[label]
-        ax.plot(x_vals, y_smooth, color=color, label=f"{label} shared reward")
+    counts = np.zeros((num_bins, unique_names.size), dtype=int)
+    name_to_col = {n: i for i, n in enumerate(unique_names)}
 
-    ax.set_xlabel("Roll-out index")
-    ax.set_ylabel("Shared Episode Reward (smoothed)")
-    ax.set_title("Shared Episode Reward per goal space")
-    ax.grid(True, which="both", linestyle=":")
-    ax.legend(loc="upper left", fontsize=9)
+    for b in range(num_bins):
+        lo, hi = bin_edges[b], bin_edges[b + 1]
+        slice_names = names_sorted[lo:hi]
+        if slice_names.size == 0:
+            continue
+        col_idx, freq = np.unique(slice_names, return_counts=True)
+        col_idx = [name_to_col[n] for n in col_idx]
+        counts[b, col_idx] = freq
 
-    plt.tight_layout()
-    plt.savefig(output_path)
-    print(f"✅ Saved shared_episode_reward plot to {output_path}")
+    # 3) convert to proportions
+    totals = counts.sum(axis=1, keepdims=True)
+    totals[totals == 0] = 1  # avoid division by 0
+    props = counts / totals
 
-
-def plot_goalspace_distribution(records, output_path, num_bins, goal_space_colors):
-    """
-    Plot a stacked bar chart of goal-space distribution per bin.
-    Uses string labels for goal spaces to match color mapping.
-    """
-    # STEP 1: Deduplicate and filter only exploit records
-    seen = {}
-    for rec in records:
-        if rec.exploit:
-            seen[rec.rollout_idx] = rec
-
-    # STEP 2: Tally counts per rollout index, using string labels
-    per_rollout = defaultdict(lambda: defaultdict(int))
-    all_idxs = set()
-    for rec in seen.values():
-        idx = rec.rollout_idx
-        label = GoalSpaceEnum.get_goal_space_name(rec.goal_space_id)
-        per_rollout[idx][label] += 1
-        all_idxs.add(idx)
-
-    all_idxs = sorted(all_idxs)
-    all_spaces = sorted({label for counts in per_rollout.values() for label in counts})
-
-    # STEP 3: Create bins
-    total_rollouts = len(all_idxs)
-    bin_size = math.ceil(total_rollouts / num_bins)
-    bins = []
-    current = []
-    for i in all_idxs:
-        current.append(i)
-        if len(current) == bin_size:
-            bins.append(current)
-            current = []
-    if current:
-        bins.append(current)
-
-    # STEP 4: Compute percentages per bin
-    goal_counts_per_bin = defaultdict(list)
-    for bin_idxs in bins:
-        counts = defaultdict(int)
-        total = 0
-        for i in bin_idxs:
-            for label in all_spaces:
-                counts[label] += per_rollout[i][label]
-            total += sum(per_rollout[i].values())
-        for label in all_spaces:
-            pct = counts[label] / total if total > 0 else 0
-            goal_counts_per_bin[label].append(pct)
-
-    # STEP 5: Plot
-    x = np.arange(len(bins))
-    bottom = np.zeros(len(bins))
+    # 4) stack-bar plot
+    x = np.arange(num_bins)
+    bottom = np.zeros(num_bins)
     plt.figure(figsize=(12, 6))
-    for label in all_spaces:
-        y = goal_counts_per_bin[label]
-        plt.bar(x, y, bottom=bottom, label=label, color=goal_space_colors[label])
-        bottom += y
+    for j, name in enumerate(unique_names):
+        plt.bar(x, props[:, j], bottom=bottom, label=name,
+                color=colors[name])
+        bottom += props[:, j]
 
+    bin_labels = [f"{idx_sorted[bin_edges[b]]}-{idx_sorted[bin_edges[b + 1] - 1]}"
+                  for b in range(num_bins)]
     plt.title(f"Goal-space rollout distribution ({num_bins} bins)")
-    plt.xlabel(f"Bins (~{bin_size} rollouts each)")
-    plt.ylabel("Proportion per bin")
-    plt.xticks(x, [f"{b[0]}-{b[-1]}" for b in bins], rotation=45, ha='right')
+    plt.xlabel("Roll-out bins")
+    plt.ylabel("Proportion")
+    plt.xticks(x, bin_labels, rotation=45, ha='right')
     plt.grid(axis='y', linestyle=":")
     plt.legend(title="Goal Space", loc="upper right")
     plt.tight_layout()
-    plt.savefig(output_path)
-    print(f"✅ Saved stacked bar distribution plot to {output_path}")
+    plt.savefig(out_path)
+    print(f"✅ Saved stacked bar plot → {out_path}")
+
+
+# ------------------- statistics --------------------------------------------
+
+
+def print_statistics(buffer_path: str, data):
+    mask = data["exploit"]
+    if not mask.any():
+        print("\n📊 Rollout Statistics: no exploit data.")
+        return
+
+    gid = data["goal_id"][mask]
+    fit = data["fitness"][mask]
+    ir = data["intr_reward"][mask]
+    idx = data["rollout_idx"][mask]
+
+    total = gid.size
+    print("\n📊 Rollout Statistics")
+    print(f"Total exploit rollouts: {total}")
+    counts = Counter(gid)
+    for g, c in counts.items():
+        print(f"  • {GoalSpaceEnum.get_goal_space_name(g):<15}: {c}")
+
+    print(f"Rollout index range: {idx.min()}–{idx.max()}")
+
+    # averages
+    for g in _unique_sorted(gid):
+        sel = gid == g
+        print(f"{GoalSpaceEnum.get_goal_space_name(g):<15}: "
+              f"avg fitness = {fit[sel].mean():7.4f}   "
+              f"avg IR = {ir[sel].mean():7.4f}")
+
+
+# ------------------- main ---------------------------------------------------
 
 
 def make_graphs():
+    os.makedirs("visualise/stats", exist_ok=True)
+
     for ag in range(2):
-        path = f"agent/kb/buffer_rollouts{ag}.pkl"
+        path = f"agent/kb/buffer_rollouts{ag}.npz"
         if not os.path.exists(path):
-            print(f"❌ Could not find {path}")
+            print(f"❌ {path} not found — skipping.")
             continue
 
-        print(f"✅ Found {path}")
-        records = load_records(path)
+        print(f"✅ Loading {path}")
+        data = load_buffer(path)
 
-        all_spaces = sorted({rec.goal_space_id for rec in records})
-        goal_space_colors = get_goal_space_colors(all_spaces)
+        goal_names = _goal_name_array(data["goal_id"])
+        colors = get_goal_space_colors(goal_names)
 
-        plot_fitness(records,
+        plot_fitness(data,
                      f"visualise/stats/fitness_plot_{ag}.png",
-                     smoothing_window=5,
-                     goal_space_colors=goal_space_colors)
+                     smooth_k=5,
+                     colors=colors)
 
-        plot_goalspace_distribution(records,
+        plot_goalspace_distribution(data,
                                     f"visualise/stats/goalspace_dist_{ag}.png",
                                     num_bins=5,
-                                    goal_space_colors=goal_space_colors)
+                                    colors=colors)
 
-        # plot_shared_episode_reward(records,
-        #                            f"visualise/stats/shared_reward_plot_{ag}.png",
-        #                            smoothing_window=5,
-        #                            goal_space_colors=goal_space_colors)
-
-        get_statistics(path)
+        print_statistics(path, data)
 
 
-def get_statistics(pickle_path):
-    with open(pickle_path, "rb") as f:
-        records: List[RolloutRecord] = pickle.load(f)
-
-    rollout_records = {rec.rollout_idx: rec for rec in records if rec.exploit}
-    filtered = list(rollout_records.values())
-
-    total = len(filtered)
-    goal_space_counts = Counter(rec.goal_space_id for rec in filtered)
-    idxs = [rec.rollout_idx for rec in filtered]
-    print("\n📊 Rollout Statistics")
-    print(f"Total rollouts: {total}")
-    for space, count in goal_space_counts.items():
-        print(f"  • {space:<15}: {count}")
-    if idxs:
-        print(f"Rollout index range: {min(idxs)} to {max(idxs)}")
-
-    fitness_by = defaultdict(list)
-    ir_by = defaultdict(list)
-    for rec in filtered:
-        fitness_by[rec.goal_space_id].append(rec.fitness)
-        ir_by[rec.goal_space_id].append(rec.intrinsic_reward)
-
-    avg_fit = {s: np.mean(v) for s, v in fitness_by.items()}
-    avg_ir = {s: np.mean(v) for s, v in ir_by.items()}
-    print("Average fitness per goal space:")
-    for s, a in avg_fit.items(): print(f"  • {s:<15}: {a:.4f}")
-    print("Average intrinsic reward per goal space:")
-    for s, a in avg_ir.items(): print(f"  • {s:<15}: {a:.4f}")
-
-
-def get_goal_space_colors(all_spaces):
-    colors = plt.cm.tab10.colors
-    all_spaces = [GoalSpaceEnum.get_goal_space_name(s) for s in all_spaces]
-    return {space: colors[idx % len(colors)]
-            for idx, space in enumerate(sorted(all_spaces, key=str))}
+if __name__ == "__main__":
+    make_graphs()

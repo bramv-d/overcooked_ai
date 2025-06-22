@@ -35,17 +35,18 @@ class IMGEPAgent(Agent):
         self.mlam = env.mlam
 
         self.goal_spaces: List[Goal] = create_goal_spaces()
-        self.kb = KnowledgeBase()
+        self.kb = KnowledgeBase(len(self.goal_spaces))
         self.goal_space_emas: List[GoalSpaceEMA] = []
         self.update_goal_space_emas()
         # Rollout bookkeeping
         self.previous_state = None
-        self.goal_space_neuro_policies: List[
-            GoalSpaceNeuroPolicy] = []  # List of neuro policies the 0th element being active
+        self.goal_space_neuro_policies: List[GoalSpaceNeuroPolicy] = []
         self.t = 0
         self.goal_reach_time_step = None
         self.rollout_fitness = 0.0
-        self.path = []  # This will hold the path of actions to take
+        self.path = []
+
+
 
     def update_goal_space_emas(self):
         """
@@ -62,7 +63,8 @@ class IMGEPAgent(Agent):
         self.rollout_fitness = 0.0
         self.previous_state = None
         chosen_goal = select_goal_space(self.goal_space_emas)
-        exploit = random.random() < EXPLOIT_PROB  # Decide whether to exploit or explore
+        exploit = random.random() < EXPLOIT_PROB
+
         neuro_policy = get_neuro_policy(selected_goal=chosen_goal, kb=self.kb, exploit=exploit,
                                         goal_spaces=self.goal_spaces)
         self.goal_space_neuro_policies = [
@@ -140,7 +142,7 @@ class IMGEPAgent(Agent):
         self.previous_state = state
         return action
 
-    def finish_rollout(self, final_state: OvercookedState, info):
+    def finish_rollout(self, info):
         # intrinsic reward = Δ fitness vs nearest prior experiment
         goal = self.goal_space_neuro_policies[0].goal  # The first goal is the main goal space
         neuro_policy = self.goal_space_neuro_policies[0].neuro_policy
@@ -156,7 +158,9 @@ class IMGEPAgent(Agent):
         else:
             record_amount = max(1, int(10 * r_i))
 
-        rollout_idx = self.kb.buffer[-1].rollout_idx + 1 if self.kb.buffer else 0
+        # Get the previous rollout index from the kb and increment it
+        prev_record = self.kb.nearest(1)
+        rollout_idx = prev_record[0].rollout_idx + 1 if prev_record else 0
 
         # Save the number of records in the knowledge base based on the r_i
         # This follows the idea of neuro evolution where successful policies are recorded more often and bad policies are recorded less often
