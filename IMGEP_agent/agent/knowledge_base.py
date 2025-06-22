@@ -14,6 +14,7 @@ from IMGEP_agent.hyper_parameters import NEURO_POLICY_HIDDEN_DIM
 class RolloutRecord:
     goal_space_id: int
     theta: NDArray[np.floating]  # policy parameters
+    partner_goal_id: int
     fitness: float
     intrinsic_reward: float
     exploit: bool = False
@@ -49,6 +50,7 @@ class KnowledgeBase:
         self._rollout_idx = np.empty(init_capacity, dtype=np.int32)
         self._theta = np.empty((init_capacity, self.param_dim),
                                dtype=np.float32)
+        self._partner_goal = np.empty(init_capacity, dtype=np.int32)
 
     def _grow(self) -> None:
         """Double the storage capacity (called automatically)."""
@@ -61,6 +63,7 @@ class KnowledgeBase:
         self._theta = np.resize(self._theta,
                                 (new_cap, self.param_dim))
         self._capacity = new_cap
+        self._partner_goal = np.resize(self._partner_goal, new_cap)
 
     # --------------------------------------------------------------------- #
     # public API
@@ -77,7 +80,7 @@ class KnowledgeBase:
         self._exploit[i] = rec.exploit
         self._rollout_idx[i] = rec.rollout_idx
         self._theta[i] = rec.theta
-
+        self._partner_goal[i] = rec.partner_goal_id
         self._size += 1
 
     def nearest(
@@ -123,6 +126,7 @@ class KnowledgeBase:
             intrinsic_reward=float(self._intr_reward[i]),
             exploit=bool(self._exploit[i]),
             rollout_idx=int(self._rollout_idx[i]),
+            partner_goal_id=int(self._partner_goal[i])
         )
 
     # ------------------------------------------------------------------ #
@@ -142,6 +146,7 @@ class KnowledgeBase:
             intr_reward=self._intr_reward[:self._size],
             exploit=self._exploit[:self._size],
             rollout_idx=self._rollout_idx[:self._size],
+            partner_goal=self._partner_goal[:self._size],
             theta=self._theta[:self._size],
         )
 
@@ -165,4 +170,5 @@ class KnowledgeBase:
         kb._rollout_idx = data["rollout_idx"]
         kb._theta[:] = data["theta"]
         kb._capacity = kb._size
+        kb._partner_goal = data["partner_goal"]
         return kb

@@ -13,6 +13,7 @@ class GoalSpaceEnum(IntEnum):
     START_COOKING = 2
     PICKUP_SOUP = 3
     PICKUP_ONION = 4
+    PLACE_IN_POT = 5
 
     @classmethod
     def get_goal_space_name(cls, value: int) -> str:
@@ -133,7 +134,8 @@ def pickup_soup_space() -> Goal:
 def create_goal_spaces() -> List[Goal]:
     return [
         place_object_space(GoalSpaceEnum.PLACE_ONION, ItemCode.ONION.value, TYPE_TO_CODE[COUNTER]),
-        pick_object_space(GoalSpaceEnum.PICKUP_ONION, ItemCode.ONION.value),
+        place_object_space(GoalSpaceEnum.PLACE_IN_POT, ItemCode.ONION.value, TYPE_TO_CODE[POT]),
+        # pick_object_space(GoalSpaceEnum.PICKUP_ONION, ItemCode.ONION.value),
         # start_cooking_space(),
         # pickup_soup_space(),
     ]

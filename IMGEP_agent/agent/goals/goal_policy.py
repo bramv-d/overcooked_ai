@@ -1,6 +1,5 @@
-import random
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict
 
 from IMGEP_agent.agent.goals.goal_spaces import Goal
 from IMGEP_agent.agent.knowledge_base import KnowledgeBase, RolloutRecord
@@ -14,17 +13,93 @@ class GoalSpaceEMA:
         self.ema = ema
 
 
-def select_goal_space(goal_space_emas: List[GoalSpaceEMA]) -> Goal:
-    # 20% exploration
-    # if random.random() > GOAL_GREEDY_PROB:
-    #     return random.choice(goal_space_emas).goal
+import random
+from typing import List
 
-    # find max EMA, allow for small floating point tolerance
-    max_ema = max(gs.ema for gs in goal_space_emas)
-    epsilon = 1e-6
-    candidates = [gs.goal for gs in goal_space_emas if abs(gs.ema - max_ema) < epsilon]
+EPSILON = 1e-6  # default numeric tolerance
 
-    return random.choice(candidates)
+
+def _top_ema_candidates(gs_emas: List["GoalSpaceEMA"], eps: float = EPSILON) -> list["GoalSpaceEMA"]:
+    """Return ALL goal-space EMA objects whose EMA is (max ± eps)."""
+    if not gs_emas:
+        return []
+    m = max(gs.ema for gs in gs_emas)
+    return [gs for gs in gs_emas if abs(gs.ema - m) < eps]
+
+
+def select_goal(
+        own_goal_space_emas: List["GoalSpaceEMA"],
+        other_goal_space_emas: List["GoalSpaceEMA"],
+        other_kb: "KnowledgeBase",
+        goal_spaces: List["Goal"],
+        *,
+        eps: float = EPSILON,
+) -> tuple[Goal, bool | None]:
+    """
+    Pick a goal for *this* agent to pursue.
+
+    1. If we are at least as motivated (EMA ≥ other EMA within `eps`), choose
+       randomly among our own top-EMA goal spaces.
+    2. Otherwise (the other agent is more motivated), try to accommodate:
+       a. Randomly pick one of *their* top-EMA goal spaces.
+       b. Ask the other agent’s KB for the most recent partner‐goal mapping.
+          First with `exploit=True`; if that returns nothing, fall back to
+          `exploit=False`.
+       c. Map the returned `partner_goal_id` back to an actual `Goal` object.
+       d. If that mapping is missing or the KB had no memory at all, fall back
+          to our own top-EMA goal spaces (rule 1).
+
+    The function never raises and always returns *some* Goal as long as
+    `own_goal_space_emas` is non-empty.
+    """
+    # ------------------------------------------------------------------ #
+    # 1) Compute “top of chart” candidate lists for both agents
+    # ------------------------------------------------------------------ #
+    own_top = _top_ema_candidates(own_goal_space_emas, eps)
+    other_top = _top_ema_candidates(other_goal_space_emas, eps)
+
+    # Guards: we assume *we* have at least one goal space; if not, the design
+    # of the caller is broken.
+    if not own_top:
+        raise ValueError("select_goal() called with no own_goal_space_emas")
+
+    # ------------------------------------------------------------------ #
+    # 2) Decide whose motivation wins
+    # ------------------------------------------------------------------ #
+    own_max_ema = own_top[0].ema  # all same EMA ± eps
+    other_max_ema = other_top[0].ema if other_top else float("-inf")
+
+    our_turn = (own_max_ema + eps) >= other_max_ema  # >= within tolerance
+    if our_turn or not other_top:
+        # -------------------------------------------------------------- #
+        # Rule 1: pick one of *our* top-EMA goal spaces at random
+        # -------------------------------------------------------------- #
+        return random.choice(own_top).goal, None
+
+    # ------------------------------------------------------------------ #
+    # 3) Their turn — try to accommodate
+    # ------------------------------------------------------------------ #
+    other_goal_space = random.choice(other_top)
+    other_goal = other_goal_space.goal
+
+    # (a) Look for the most recent partner-goal mapping in their KB
+    lookups = [
+        other_kb.nearest(1, goal=other_goal, exploit=True),
+        other_kb.nearest(1, goal=other_goal, exploit=False),
+    ]
+    other_kb_recent = next((res for res in lookups if res), [])  # first non-empty
+
+    if other_kb_recent:
+        partner_goal_id = other_kb_recent[0].partner_goal_id
+        # (b) Map that id back to our Goal object
+        for gs in goal_spaces:
+            if getattr(gs, "goal_id", None) == partner_goal_id:
+                return gs, True
+
+    # ------------------------------------------------------------------ #
+    # 4) Fallback — couldn’t map or KB was empty; revert to our own top
+    # ------------------------------------------------------------------ #
+    return random.choice(own_top).goal
 
 
 def update_goal_space_ema(

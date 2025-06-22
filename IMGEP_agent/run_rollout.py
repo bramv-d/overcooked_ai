@@ -40,7 +40,8 @@ for roll in range(ROLLOUTS):
     print(roll)
     env.reset(regen_mdp=True)
 
-    for ag in agents: ag.reset(mdp)
+    for ag in agents: ag.reset(other_goal_space_emas=agents[1 - ag.agent_id].goal_space_emas,
+                               other_kb=agents[1 - ag.agent_id].kb, mdp=mdp)
     done = False
     state = env.state
     # -------- record trajectory -----------------------------------------
@@ -51,8 +52,8 @@ for roll in range(ROLLOUTS):
         ep_states.append(copy.deepcopy(state))  # save each next state
 
     # -------- finish roll-out bookkeeping -------------------------------
-    for ag in agents:
-        ag.finish_rollout(info)
+    for idx, ag in enumerate(agents):
+        ag.finish_rollout(info, agents[1 - idx].goal_space_neuro_policies[0].goal.goal_id)
 
     if roll == ROLLOUTS - 1:
         create_gif(ep_states, mdp, roll, True)
