@@ -85,9 +85,9 @@ def get_neuro_policy(selected_goal: Goal, kb: KnowledgeBase, goal_spaces: List[G
     # TODO include the shared episode reward into the policy selection.
     # TODO this should probably be done on reset. The shared episode reward should be a scalar from 0 tot 1 depending on the 50 recent episodes shared reward
 
-    if not kb.nearest(selected_goal, 1):
+    if not kb.nearest(goal=selected_goal, k=1):
         return NeuroPolicy(goal_spaces)
-    rec = kb.nearest(selected_goal, PARENT_POLICY_RECENT_RECORDS)
+    rec = kb.nearest(goal=selected_goal, k=PARENT_POLICY_RECENT_RECORDS)
     if exploit:
         # exploit: use the best policy from the knowledge base
         best_idx = np.argmax([r.fitness for r in rec])

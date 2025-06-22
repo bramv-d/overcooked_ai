@@ -9,10 +9,10 @@ from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedS
 
 
 class GoalSpaceEnum(IntEnum):
-    SHARED_EPISODE = 0
     PLACE_ONION = 1
     START_COOKING = 2
     PICKUP_SOUP = 3
+    PICKUP_ONION = 4
 
     @classmethod
     def get_goal_space_name(cls, value: int) -> str:
@@ -130,21 +130,10 @@ def pickup_soup_space() -> Goal:
 
     return Goal(GoalSpaceEnum.PICKUP_SOUP, fitness_fn=fitness, success_fn=success)
 
-
-def shared_episode_space() -> Goal:
-    def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
-                agent_id: int, mdp: OvercookedGridworld):
-        return 0.0  # The fitness is based on the rewards from the environment, not the goal space
-
-    def success(agent_id: int, state: OvercookedState, previous_state: OvercookedState,
-                mdp: OvercookedGridworld):
-        return False
-
-    return Goal(GoalSpaceEnum.SHARED_EPISODE, fitness_fn=fitness, success_fn=success)
-
 def create_goal_spaces() -> List[Goal]:
     return [
         place_object_space(GoalSpaceEnum.PLACE_ONION, ItemCode.ONION.value, TYPE_TO_CODE[COUNTER]),
-        start_cooking_space(),
-        pickup_soup_space(),
+        pick_object_space(GoalSpaceEnum.PICKUP_ONION, ItemCode.ONION.value),
+        # start_cooking_space(),
+        # pickup_soup_space(),
     ]

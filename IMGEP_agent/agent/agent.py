@@ -1,19 +1,25 @@
 import random
 from typing import List
 
-from IMGEP_agent.agent.goal_policy import select_goal_space
-from IMGEP_agent.agent.goals.goal_spaces import Goal, create_goal_spaces, shared_episode_space
+from IMGEP_agent.agent.goals.goal_policy import GoalSpaceEMA, select_goal_space, update_goal_space_ema
+from IMGEP_agent.agent.goals.goal_spaces import Goal, create_goal_spaces
 from IMGEP_agent.agent.helpers.get_plan import get_plan
 from IMGEP_agent.agent.helpers.obs_to_vect import obs_to_vec
 from IMGEP_agent.agent.knowledge_base import KnowledgeBase, RolloutRecord
 from IMGEP_agent.agent.neuro_policy.high_level_actions import HighLevelActions, get_motion_goals
 from IMGEP_agent.agent.neuro_policy.neuro_policy import GoalSpaceNeuroPolicy, get_neuro_policy
+from IMGEP_agent.hyper_parameters import EXPLOIT_PROB
 from overcooked_ai_py.agents.agent import Agent
 from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState
 from overcooked_ai_py.planning.planners import MotionPlanner
 
+
+# TODO 1. Moet ik de keuze van het goal space afhankelijk maken van de state?
+# TODO 1a. Heeft 1 episode meerdere goals?
+# TODO 2. Hoe spelen de goal space intrinsic rewards van de andere agent een rol in de keuze van het goal space?
+# TODO 3. Hoe voorspel je de goal space van de andere agent op basis van de goal space intrinsic reward?
 
 class IMGEPAgent(Agent):
     def __init__(
@@ -30,7 +36,8 @@ class IMGEPAgent(Agent):
 
         self.goal_spaces: List[Goal] = create_goal_spaces()
         self.kb = KnowledgeBase()
-
+        self.goal_space_emas: List[GoalSpaceEMA] = []
+        self.update_goal_space_emas()
         # Rollout bookkeeping
         self.previous_state = None
         self.goal_space_neuro_policies: List[
@@ -40,9 +47,13 @@ class IMGEPAgent(Agent):
         self.rollout_fitness = 0.0
         self.path = []  # This will hold the path of actions to take
 
-        super().__init__()
+    def update_goal_space_emas(self):
+        """
+        Update the goal space EMA based on the knowledge base.
+        """
+        self.goal_space_emas = update_goal_space_ema(self.kb, self.goal_spaces)
 
-    def reset(self, mdp: OvercookedGridworld | None = None, shared_episode: bool = False, exploit: bool = False):
+    def reset(self, mdp: OvercookedGridworld | None = None):
         super().reset()
         self.mdp = mdp
         self.t = 0
@@ -50,8 +61,8 @@ class IMGEPAgent(Agent):
         self.goal_reach_time_step = None
         self.rollout_fitness = 0.0
         self.previous_state = None
-        chosen_goal = shared_episode_space() if shared_episode else select_goal_space(all_goal_spaces=self.goal_spaces,
-                                                                                      kb=self.kb)
+        chosen_goal = select_goal_space(self.goal_space_emas)
+        exploit = random.random() < EXPLOIT_PROB  # Decide whether to exploit or explore
         neuro_policy = get_neuro_policy(selected_goal=chosen_goal, kb=self.kb, exploit=exploit,
                                         goal_spaces=self.goal_spaces)
         self.goal_space_neuro_policies = [
@@ -75,21 +86,13 @@ class IMGEPAgent(Agent):
             if len(self.goal_space_neuro_policies) == 1:
                 self.goal_reach_time_step = self.t
             else:
-                self.rollout_fitness += self.goal_space_neuro_policies[-1].goal.fitness(
-                    # Only add the fitness of the first goal space
-                    pick_step=self.goal_reach_time_step,
-                    state=state,
-                    previous_state=self.previous_state,
-                    agent_id=self.agent_id,
-                    mdp=self.mdp
-                )
                 self.goal_space_neuro_policies.pop()
 
         if self.previous_state and (self.goal_reach_time_step is None or self.t == self.goal_reach_time_step) and len(
                 self.goal_space_neuro_policies) == 1:
             self.rollout_fitness += self.goal_space_neuro_policies[0].goal.fitness(
                 # Only add the fitness of the first goal space
-                pick_step=self.t,
+                pick_step=self.goal_reach_time_step,
                 state=state,
                 previous_state=self.previous_state,
                 agent_id=self.agent_id,
@@ -142,7 +145,7 @@ class IMGEPAgent(Agent):
         goal = self.goal_space_neuro_policies[0].goal  # The first goal is the main goal space
         neuro_policy = self.goal_space_neuro_policies[0].neuro_policy
         exploit = self.goal_space_neuro_policies[0].exploit
-        prev_record = self.kb.nearest(goal, 1, exploit=exploit)
+        prev_record = self.kb.nearest(goal=goal, k=1, exploit=exploit)
         prev_f = prev_record[0].fitness if prev_record else 0.0
 
         fitness_difference = self.rollout_fitness - prev_f
@@ -166,3 +169,4 @@ class IMGEPAgent(Agent):
                 exploit=exploit,
                 rollout_idx=rollout_idx,
             ))
+        self.update_goal_space_emas()

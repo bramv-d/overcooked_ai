@@ -31,16 +31,29 @@ class KnowledgeBase:
         """Insert a new experiment and flag index for rebuild."""
         self.buffer.append(rec)
 
-    def nearest(self, goal: Goal, k: int, exploit: bool | None = None) -> List[RolloutRecord] | None:
+    def nearest(
+            self,
+            k: int,
+            exploit: bool | None = None,
+            goal: Goal | None = None
+    ) -> list[RolloutRecord]:
         """
-        Return the db_ids(s) of the most similar past experiment.
+        Return the k most-recent rollout records that satisfy the optional
+        `goal` and `exploit` filters (newest first).
         """
-        nearest = []
-        for index, g in enumerate(reversed(self.buffer)):  # Iterate in reverse order
-            if g.goal_space_id == goal.goal_id and (exploit is None or g.exploit == exploit):
-                nearest.append(g)
+        nearest: list[RolloutRecord] = []
+
+        for rec in reversed(self.buffer):  # newest → oldest
+            # ---------- filter gates ----------
+            if exploit is not None and rec.exploit != exploit:
+                continue
+            if goal is not None and rec.goal_space_id != goal.goal_id:
+                continue
+            # ---------- passed all gates ----------
+            nearest.append(rec)
             if len(nearest) == k:
                 break
+
         return nearest
 
     def __len__(self):
