@@ -25,10 +25,11 @@ class GoalSpaceEnum(IntEnum):
 
 
 class Goal:
-    def __init__(self, goal_id: GoalSpaceEnum, fitness_fn, success_fn=None):
+    def __init__(self, goal_id: GoalSpaceEnum, fitness_fn, success_fn=None, reset=None):
         self.goal_id = goal_id
         self.fitness = fitness_fn
         self.success = success_fn
+        self.reset = reset
 
 
 def pick_object_space(goal_id: GoalSpaceEnum, object_code: int) -> Goal:
@@ -75,7 +76,9 @@ def place_object_space(goal_id: GoalSpaceEnum, object_code: int, terrain_type: i
 
 
 def start_cooking_space() -> Goal:
-    place_onion = place_object_space(GoalSpaceEnum.PLACE_ONION, ItemCode.ONION.value, TYPE_TO_CODE[POT])
+    place_onion_in_pot = place_object_space(GoalSpaceEnum.PLACE_ONION, ItemCode.ONION.value, TYPE_TO_CODE[POT])
+    place_onion_on_counter = place_object_space(GoalSpaceEnum.PLACE_ONION, ItemCode.ONION.value, TYPE_TO_CODE[COUNTER])
+    onions_placed = 0
     def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
                 agent_id: int, mdp: OvercookedGridworld):
         prev_pots = set(mdp.get_cooking_pots(mdp.get_pot_states(previous_state)))
@@ -85,8 +88,15 @@ def start_cooking_space() -> Goal:
         prev_agent = previous_state.players[agent_id]
         adj = mdp.get_adjacent_features(prev_agent)
         adj_positions = {pos for pos, _ in adj}
-        if place_onion.success(agent_id, state, previous_state, mdp):
-            return 0.1
+        nonlocal onions_placed
+        if place_onion_in_pot.success(agent_id, state, previous_state, mdp):
+            onions_placed += 1
+            if onions_placed < 3:
+                return 0.1
+        if place_onion_on_counter.success(agent_id, state, previous_state, mdp):
+            onions_placed += 1
+            if onions_placed < 3:
+                return 0.05
         for p in new:
             if p in adj_positions:
                 current_pot_state = state.get_object(p)
@@ -136,6 +146,15 @@ def create_goal_spaces() -> List[Goal]:
         place_object_space(GoalSpaceEnum.PLACE_ONION, ItemCode.ONION.value, TYPE_TO_CODE[COUNTER]),
         place_object_space(GoalSpaceEnum.PLACE_IN_POT, ItemCode.ONION.value, TYPE_TO_CODE[POT]),
         # pick_object_space(GoalSpaceEnum.PICKUP_ONION, ItemCode.ONION.value),
-        # start_cooking_space(),
+        start_cooking_space(),
         # pickup_soup_space(),
     ]
+
+
+def reset_goal_spaces(goal_spaces: List[Goal]):
+    """
+    Reset the goal spaces to their initial state.
+    """
+    for goal in goal_spaces:
+        if goal.reset:
+            goal.reset()

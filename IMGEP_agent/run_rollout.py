@@ -1,8 +1,9 @@
 import copy
+import random
 
 from IMGEP_agent.agent.agent import IMGEPAgent
 from IMGEP_agent.agent.knowledge_base import KnowledgeBase
-from IMGEP_agent.hyper_parameters import HORIZON, LAYOUT_ID, LOAD_KB, ROLLOUTS
+from IMGEP_agent.hyper_parameters import EXPLOIT_PROB, HORIZON, LAYOUT_ID, LOAD_KB, ROLLOUTS
 from IMGEP_agent.visualise.create_gif import create_gif
 from IMGEP_agent.visualise.visualise import make_graphs
 from overcooked_ai_py.data.layouts.layouts import layouts
@@ -39,7 +40,7 @@ if LOAD_KB:
 for roll in range(ROLLOUTS):
     print(roll)
     env.reset(regen_mdp=True)
-
+    exploit = random.random() < EXPLOIT_PROB
     for ag in agents: ag.reset(other_goal_space_emas=agents[1 - ag.agent_id].goal_space_emas,
                                other_kb=agents[1 - ag.agent_id].kb, mdp=mdp)
     done = False

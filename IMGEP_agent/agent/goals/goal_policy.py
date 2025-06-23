@@ -3,7 +3,7 @@ from typing import Dict
 
 from IMGEP_agent.agent.goals.goal_spaces import Goal
 from IMGEP_agent.agent.knowledge_base import KnowledgeBase, RolloutRecord
-from IMGEP_agent.hyper_parameters import BONUS_CAP, BONUS_FLOOR, BONUS_SLOPE, GOAL_EMA_ALPHA, N_RECENT
+from IMGEP_agent.hyper_parameters import BONUS_CAP, BONUS_FLOOR, BONUS_SLOPE, N_RECENT
 
 
 class GoalSpaceEMA:
@@ -105,7 +105,6 @@ def select_goal(
 def update_goal_space_ema(
         kb: KnowledgeBase,
         goal_spaces: List[Goal],
-        alpha: float = GOAL_EMA_ALPHA
 ) -> List[GoalSpaceEMA]:
     """
     Compute an EMA of intrinsic reward for each GoalSpace.

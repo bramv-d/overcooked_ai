@@ -2,7 +2,7 @@ import random
 from typing import List
 
 from IMGEP_agent.agent.goals.goal_policy import GoalSpaceEMA, select_goal, update_goal_space_ema
-from IMGEP_agent.agent.goals.goal_spaces import Goal, create_goal_spaces
+from IMGEP_agent.agent.goals.goal_spaces import Goal, create_goal_spaces, reset_goal_spaces
 from IMGEP_agent.agent.helpers.get_plan import get_plan
 from IMGEP_agent.agent.helpers.obs_to_vect import obs_to_vec
 from IMGEP_agent.agent.knowledge_base import KnowledgeBase, RolloutRecord
@@ -61,6 +61,7 @@ class IMGEPAgent(Agent):
         self.goal_reach_time_step = None
         self.rollout_fitness = 0.0
         self.previous_state = None
+        reset_goal_spaces(self.goal_spaces)
         chosen_goal, exploit = select_goal(self.goal_space_emas, other_goal_space_emas=other_goal_space_emas,
                                            other_kb=other_kb, goal_spaces=self.goal_spaces)
         exploit = exploit if exploit else random.random() < EXPLOIT_PROB
