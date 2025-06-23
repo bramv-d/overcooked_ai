@@ -4,8 +4,8 @@ from typing import List, Optional
 import numpy as np
 from numpy.typing import NDArray
 
+from IMGEP_agent.agent.goals.goal_policy_input_vector import GOAL_POLICY_INPUT_VECTOR_SIZE
 from IMGEP_agent.agent.goals.goal_spaces import Goal
-from IMGEP_agent.agent.helpers.obs_to_vect import OBS_VEC_SIZE
 from IMGEP_agent.agent.neuro_policy.high_level_actions import HighLevelActions
 from IMGEP_agent.hyper_parameters import NEURO_POLICY_HIDDEN_DIM
 
@@ -19,6 +19,7 @@ class RolloutRecord:
     intrinsic_reward: float
     exploit: bool = False
     rollout_idx: int = 0
+    shared_reward: int = 0
 
 class KnowledgeBase:
     """
@@ -35,7 +36,7 @@ class KnowledgeBase:
     # --------------------------------------------------------------------- #
     def __init__(self, goal_spaces_length, init_capacity: int = 2048) -> None:
         num_tokens = len(HighLevelActions) + goal_spaces_length
-        self.param_dim = (OBS_VEC_SIZE * NEURO_POLICY_HIDDEN_DIM  # W1
+        self.param_dim = (GOAL_POLICY_INPUT_VECTOR_SIZE * NEURO_POLICY_HIDDEN_DIM  # W1
                           + NEURO_POLICY_HIDDEN_DIM  # b1
                           + NEURO_POLICY_HIDDEN_DIM * num_tokens  # W2
                           + num_tokens)  # b2
@@ -51,6 +52,7 @@ class KnowledgeBase:
         self._theta = np.empty((init_capacity, self.param_dim),
                                dtype=np.float32)
         self._partner_goal = np.empty(init_capacity, dtype=np.int32)
+        self._shared_reward = np.empty(init_capacity, dtype=np.int32)
 
     def _grow(self) -> None:
         """Double the storage capacity (called automatically)."""
@@ -64,6 +66,7 @@ class KnowledgeBase:
                                 (new_cap, self.param_dim))
         self._capacity = new_cap
         self._partner_goal = np.resize(self._partner_goal, new_cap)
+        self._shared_reward = np.resize(self._shared_reward, new_cap)
 
     # --------------------------------------------------------------------- #
     # public API
@@ -82,6 +85,7 @@ class KnowledgeBase:
         self._theta[i] = rec.theta
         self._partner_goal[i] = rec.partner_goal_id
         self._size += 1
+        self._shared_reward[i] = rec.shared_reward
 
     def nearest(
             self,
@@ -126,7 +130,8 @@ class KnowledgeBase:
             intrinsic_reward=float(self._intr_reward[i]),
             exploit=bool(self._exploit[i]),
             rollout_idx=int(self._rollout_idx[i]),
-            partner_goal_id=int(self._partner_goal[i])
+            partner_goal_id=int(self._partner_goal[i]),
+            shared_reward=int(self._shared_reward[i]),
         )
 
     # ------------------------------------------------------------------ #
@@ -148,6 +153,7 @@ class KnowledgeBase:
             rollout_idx=self._rollout_idx[:self._size],
             partner_goal=self._partner_goal[:self._size],
             theta=self._theta[:self._size],
+            shared_reward=self._shared_reward[:self._size],
         )
 
     @classmethod
@@ -171,4 +177,5 @@ class KnowledgeBase:
         kb._theta[:] = data["theta"]
         kb._capacity = kb._size
         kb._partner_goal = data["partner_goal"]
+        kb._shared_reward = data["shared_reward"]
         return kb

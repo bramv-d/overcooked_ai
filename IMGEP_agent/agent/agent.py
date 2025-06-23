@@ -2,13 +2,12 @@ import random
 from typing import List
 
 from IMGEP_agent.agent.goals.goal_policy import GoalSpaceEMA, select_goal, update_goal_space_ema
+from IMGEP_agent.agent.goals.goal_policy_input_vector import get_goal_policy_input_vector
 from IMGEP_agent.agent.goals.goal_spaces import Goal, create_goal_spaces, reset_goal_spaces
 from IMGEP_agent.agent.helpers.get_plan import get_plan
-from IMGEP_agent.agent.helpers.obs_to_vect import obs_to_vec
 from IMGEP_agent.agent.knowledge_base import KnowledgeBase, RolloutRecord
 from IMGEP_agent.agent.neuro_policy.high_level_actions import HighLevelActions, get_motion_goals
 from IMGEP_agent.agent.neuro_policy.neuro_policy import GoalSpaceNeuroPolicy, get_neuro_policy
-from IMGEP_agent.hyper_parameters import EXPLOIT_PROB
 from overcooked_ai_py.agents.agent import Agent
 from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
@@ -53,7 +52,7 @@ class IMGEPAgent(Agent):
         self.goal_space_emas = update_goal_space_ema(self.kb, self.goal_spaces)
 
     def reset(self, other_goal_space_emas: list[GoalSpaceEMA], other_kb: KnowledgeBase,
-              mdp: OvercookedGridworld | None = None):
+              mdp: OvercookedGridworld | None = None, exploit: bool = False):
         super().reset()
         self.mdp = mdp
         self.t = 0
@@ -63,8 +62,8 @@ class IMGEPAgent(Agent):
         self.previous_state = None
         reset_goal_spaces(self.goal_spaces)
         chosen_goal, exploit = select_goal(self.goal_space_emas, other_goal_space_emas=other_goal_space_emas,
-                                           other_kb=other_kb, goal_spaces=self.goal_spaces)
-        exploit = exploit if exploit else random.random() < EXPLOIT_PROB
+                                           other_kb=other_kb, goal_spaces=self.goal_spaces, own_kb=self.kb,
+                                           exploit=exploit)
 
         neuro_policy = get_neuro_policy(selected_goal=chosen_goal, kb=self.kb, exploit=exploit,
                                         goal_spaces=self.goal_spaces)
@@ -100,8 +99,7 @@ class IMGEPAgent(Agent):
             step = self.path.pop(0)
             return self.return_action(step, state)
 
-        obs_vec = obs_to_vec(state, self.mdp, self.mp,
-                             self.agent_id)
+        obs_vec = get_goal_policy_input_vector(state, self.mdp, self.mp, self.agent_id)
 
         # ----------------- high-level action selection ----------------------
         neuro_policy_token = self.goal_space_neuro_policies[-1].neuro_policy.select_token(obs_vec, greedy=exploit)
@@ -146,12 +144,14 @@ class IMGEPAgent(Agent):
         prev_f = prev_record[0].fitness if prev_record else 0.0
 
         fitness_difference = self.rollout_fitness - prev_f
+        shared_reward = info['episode']['ep_shaped_r'] + info['episode']['ep_sparse_r']
+        prev_shared_reward = prev_record[0].shared_reward if prev_record else 0.0
         r_i = max(0.0, fitness_difference)
-
         if exploit:
             record_amount = 1
         else:
-            record_amount = max(1, int(10 * r_i))
+            shaped_reward_difference = max(0.0, shared_reward - prev_shared_reward) / 50
+            record_amount = max(1, int(5 * (r_i + shaped_reward_difference)))
 
         # Get the previous rollout index from the kb and increment it
         prev_record = self.kb.nearest(1)
@@ -167,6 +167,7 @@ class IMGEPAgent(Agent):
                 intrinsic_reward=r_i,
                 exploit=exploit,
                 rollout_idx=rollout_idx,
-                partner_goal_id=partner_goal_id
+                partner_goal_id=partner_goal_id,
+                shared_reward=shared_reward
             ))
         self.update_goal_space_emas()

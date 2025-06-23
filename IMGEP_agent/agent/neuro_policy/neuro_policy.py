@@ -4,8 +4,8 @@ from typing import List
 
 import numpy as np
 
+from IMGEP_agent.agent.goals.goal_policy_input_vector import GOAL_POLICY_INPUT_VECTOR_SIZE
 from IMGEP_agent.agent.goals.goal_spaces import Goal
-from IMGEP_agent.agent.helpers.obs_to_vect import OBS_VEC_SIZE
 from IMGEP_agent.agent.knowledge_base import KnowledgeBase
 from IMGEP_agent.agent.neuro_policy.high_level_actions import HighLevelActions
 from IMGEP_agent.hyper_parameters import ADAPTIVE_NOISE_STD, NEURO_POLICY_HIDDEN_DIM, PARENT_POLICY_RECENT_RECORDS
@@ -20,7 +20,7 @@ def he_init(fan_in: int, fan_out: int) -> np.ndarray:
 class NeuroPolicy:
     def __init__(self, goal_spaces: List[Goal], theta: np.ndarray | None = None):
 
-        self.inp_dim = OBS_VEC_SIZE
+        self.inp_dim = GOAL_POLICY_INPUT_VECTOR_SIZE
         self.hidden_dim = NEURO_POLICY_HIDDEN_DIM
         self.num_tokens = len(HighLevelActions) + len(goal_spaces)
 

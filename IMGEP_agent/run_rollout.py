@@ -42,7 +42,7 @@ for roll in range(ROLLOUTS):
     env.reset(regen_mdp=True)
     exploit = random.random() < EXPLOIT_PROB
     for ag in agents: ag.reset(other_goal_space_emas=agents[1 - ag.agent_id].goal_space_emas,
-                               other_kb=agents[1 - ag.agent_id].kb, mdp=mdp)
+                               other_kb=agents[1 - ag.agent_id].kb, mdp=mdp, exploit=exploit)
     done = False
     state = env.state
     # -------- record trajectory -----------------------------------------

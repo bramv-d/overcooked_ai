@@ -1,9 +1,9 @@
 from collections import defaultdict
 from typing import Dict
 
-from IMGEP_agent.agent.goals.goal_spaces import Goal
+from IMGEP_agent.agent.goals.goal_spaces import Goal, get_goal_by_goal_id
 from IMGEP_agent.agent.knowledge_base import KnowledgeBase, RolloutRecord
-from IMGEP_agent.hyper_parameters import BONUS_CAP, BONUS_FLOOR, BONUS_SLOPE, N_RECENT
+from IMGEP_agent.hyper_parameters import N_RECENT
 
 
 class GoalSpaceEMA:
@@ -32,8 +32,9 @@ def select_goal(
         other_goal_space_emas: List["GoalSpaceEMA"],
         other_kb: "KnowledgeBase",
         goal_spaces: List["Goal"],
-        *,
+        own_kb: "KnowledgeBase",
         eps: float = EPSILON,
+        exploit: bool = False,
 ) -> tuple[Goal, bool | None]:
     """
     Pick a goal for *this* agent to pursue.
@@ -74,7 +75,22 @@ def select_goal(
         # -------------------------------------------------------------- #
         # Rule 1: pick one of *our* top-EMA goal spaces at random
         # -------------------------------------------------------------- #
-        return random.choice(own_top).goal, None
+        if exploit:
+            return random.choice(own_top).goal, True
+        else:
+            # If not exploit, return a goal using the EMA as a probability
+            # distribution, so that more motivated goal spaces are more likely
+            # to be selected.
+            # Convert each EMA to a strictly-positive weight
+            min_prob = 0.05
+            temperature = 0.5  # controls the "sharpness" of the distribution
+            weights = [(itm.ema + min_prob) ** temperature for itm in own_goal_space_emas]
+            chosen_goal_space_ema = random.choices(own_goal_space_emas, weights=weights, k=1)[0]
+            # Return the goal from the chosen goal space
+
+            # random.choices does the normalized soft-max for you
+            return get_goal_space_from_goal_id(chosen_goal_space_ema.goal.goal_id, goal_spaces), False
+
 
     # ------------------------------------------------------------------ #
     # 3) Their turn — try to accommodate
@@ -91,16 +107,33 @@ def select_goal(
 
     if other_kb_recent:
         partner_goal_id = other_kb_recent[0].partner_goal_id
-        # (b) Map that id back to our Goal object
-        for gs in goal_spaces:
-            if getattr(gs, "goal_id", None) == partner_goal_id:
-                return gs, True
+        goal = get_goal_by_goal_id(partner_goal_id, goal_spaces)
+        own_recent = own_kb.nearest(10, goal=goal, exploit=True)
+        if max(r.fitness for r in own_recent) > 0.5:  # Only return a goal if it has a decent fitness
+            return goal, True
 
     # ------------------------------------------------------------------ #
     # 4) Fallback — couldn’t map or KB was empty; revert to our own top
     # ------------------------------------------------------------------ #
-    return random.choice(own_top).goal
+    own_goal = random.choice(own_goal_space_emas)
+    return get_goal_by_goal_id(own_goal.goal.goal_id, goal_spaces), True
 
+
+def get_goal_space_from_goal_id(goal_id: int, goal_spaces: List[Goal]) -> Goal:
+    """
+    Get the GoalSpace object from a goal_id.
+
+    Args:
+        goal_id (int): The ID of the goal.
+        goal_spaces (List[Goal]): List of all available GoalSpace objects.
+
+    Returns:
+        Goal: The GoalSpace object corresponding to the given goal_id.
+    """
+    for goal_space in goal_spaces:
+        if goal_space.goal_id == goal_id:
+            return goal_space
+    raise ValueError(f"Goal with ID {goal_id} not found in provided goal spaces.")
 
 def update_goal_space_ema(
         kb: KnowledgeBase,
@@ -134,11 +167,6 @@ def update_goal_space_ema(
 
         # mean intrinsic reward over the bucket (0 if empty)
         avg_ir = sum(r.intrinsic_reward for r in records) / n if n else 0.0
-
-        # data-scarcity bonus
-        if n < BONUS_FLOOR:
-            bonus = max(0.0, BONUS_CAP - n * BONUS_SLOPE)
-            avg_ir += bonus
 
         ema_list.append(GoalSpaceEMA(g, avg_ir))
 

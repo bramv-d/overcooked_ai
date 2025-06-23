@@ -10,10 +10,7 @@ def is_reachable(mp: MotionPlanner, pos_and_or, target_locations) -> float:
     return 1.0 if mp.min_cost_to_feature(pos_and_or, target_locations) != np.inf else 0.0
 
 
-OBS_VEC_SIZE = len(ItemCode) + 8
-
-
-def obs_to_vec(
+def get_goal_policy_input_vector(
         state: OvercookedState,
         mdp: OvercookedGridworld,
         mp: MotionPlanner,
@@ -26,27 +23,36 @@ def obs_to_vec(
     held = ItemCode.ItemCodeValue(me.get_object().name) if me.has_object() else ItemCode.NOTHING
     held_onehot = np.eye(len(ItemCode), dtype=np.float32)[held]  # shape (5,)
 
+    counter_objects = mdp.get_counter_objects_dict(state)
+
     # Binary reachable features
     d_onion = is_reachable(mp, me.pos_and_or, mdp.get_onion_dispenser_locations())
-    d_tomato = is_reachable(mp, me.pos_and_or, mdp.get_tomato_dispenser_locations())
+    d_onion_counter = is_reachable(mp, me.pos_and_or, counter_objects["onion"])
+    d_dish_pickup = is_reachable(mp, me.pos_and_or, mdp.get_dish_dispenser_locations())
+    d_dish_counter = is_reachable(mp, me.pos_and_or, counter_objects["dish"])
     d_pots_cooking = is_reachable(mp, me.pos_and_or, mdp.get_cooking_pots(pot_states))
-    d_empty_pots = is_reachable(mp, me.pos_and_or, mdp.get_empty_pots(pot_states))
-    d_ready_pots = is_reachable(mp, me.pos_and_or, mdp.get_ready_pots(pot_states))
     d_full_not_cooking_pots = is_reachable(mp, me.pos_and_or, mdp.get_full_but_not_cooking_pots(pot_states))
-    d_counter = is_reachable(mp, me.pos_and_or, mdp.get_empty_counter_locations(state))
-    d_serving = is_reachable(mp, me.pos_and_or, mdp.get_serving_locations())
+    d_empty_pots = is_reachable(mp, me.pos_and_or, mdp.get_empty_pots(pot_states))
+    d_partly_full_pots = is_reachable(mp, me.pos_and_or, mdp.get_partially_full_pots(pot_states))
+    d_dish_pickup_useful = mdp.is_dish_pickup_useful(state, pot_states)
+    d_ready_pots = is_reachable(mp, me.pos_and_or, mdp.get_ready_pots(pot_states))
 
     # Assemble feature vector
     feat = np.array([
-        *held_onehot,  # (5,)
-        d_onion,  # (1,)
-        d_tomato,
+        *held_onehot,  # (5,# )
+        d_dish_pickup,
+        d_onion_counter,
+        d_dish_counter,
+        d_onion,
+        d_partly_full_pots,
+        d_dish_pickup_useful,
         d_pots_cooking,
         d_empty_pots,
         d_full_not_cooking_pots,
         d_ready_pots,
-        d_counter,
-        d_serving,
     ], dtype=np.float32)
 
-    return feat  # shape = (5 + 8,) = (13,)
+    return feat
+
+
+GOAL_POLICY_INPUT_VECTOR_SIZE = len(ItemCode) + 10
