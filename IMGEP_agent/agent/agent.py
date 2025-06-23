@@ -8,6 +8,7 @@ from IMGEP_agent.agent.helpers.get_plan import get_plan
 from IMGEP_agent.agent.knowledge_base import KnowledgeBase, RolloutRecord
 from IMGEP_agent.agent.neuro_policy.high_level_actions import HighLevelActions, get_motion_goals
 from IMGEP_agent.agent.neuro_policy.neuro_policy import GoalSpaceNeuroPolicy, get_neuro_policy
+from IMGEP_agent.hyper_parameters import EXPLOIT_PROB
 from overcooked_ai_py.agents.agent import Agent
 from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
@@ -61,6 +62,7 @@ class IMGEPAgent(Agent):
         self.rollout_fitness = 0.0
         self.previous_state = None
         reset_goal_spaces(self.goal_spaces)
+        exploit = random.random() < EXPLOIT_PROB
         chosen_goal, exploit = select_goal(self.goal_space_emas, other_goal_space_emas=other_goal_space_emas,
                                            other_kb=other_kb, goal_spaces=self.goal_spaces, own_kb=self.kb,
                                            exploit=exploit)
@@ -135,14 +137,14 @@ class IMGEPAgent(Agent):
         self.previous_state = state
         return action
 
-    def finish_rollout(self, info, partner_goal_id):
+    def finish_rollout(self, info, partner_goal_id, partner_fitness: float = 0.0):
         # intrinsic reward = Δ fitness vs nearest prior experiment
         goal = self.goal_space_neuro_policies[0].goal  # The first goal is the main goal space
         neuro_policy = self.goal_space_neuro_policies[0].neuro_policy
         exploit = self.goal_space_neuro_policies[0].exploit
         prev_record = self.kb.nearest(goal=goal, k=1, exploit=exploit)
         prev_f = prev_record[0].fitness if prev_record else 0.0
-
+        # self.rollout_fitness += (partner_fitness / 10) # 10% of the partner's fitness is added to the rollout fitness
         fitness_difference = self.rollout_fitness - prev_f
         shared_reward = info['episode']['ep_shaped_r'] + info['episode']['ep_sparse_r']
         prev_shared_reward = prev_record[0].shared_reward if prev_record else 0.0

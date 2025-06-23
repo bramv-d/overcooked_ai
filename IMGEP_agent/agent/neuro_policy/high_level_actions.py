@@ -5,7 +5,7 @@ from overcooked_ai_py.planning.planners import MediumLevelActionManager
 
 
 class HighLevelActions(IntEnum):
-    GO_ONION, GO_TOMATO, GO_DISH, PUT_ONION, PUT_TOMATO, GO_READY_POT, GO_SERVE, START_COOKING, GO_COUNTER, WAIT = range(
+    GO_ONION, GO_DISH, PUT_ONION, PUT_TOMATO, GO_READY_POT, GO_SERVE, START_COOKING, GO_COUNTER, WAIT, ONION_FROM_DISPENSER = range(
         10)
 
 
@@ -18,8 +18,8 @@ def get_motion_goals(mlam: MediumLevelActionManager, mdp: OvercookedGridworld,
     match high_level_action:
         case HighLevelActions.GO_ONION:
             return mlam.pickup_onion_actions(counter_objects)
-        case HighLevelActions.GO_TOMATO:
-            return mlam.pickup_tomato_actions(counter_objects)
+        case HighLevelActions.ONION_FROM_DISPENSER:
+            return mlam.pickup_onion_actions(counter_objects, only_use_dispensers=True)
         case HighLevelActions.GO_DISH:
             return mlam.pickup_dish_actions(counter_objects)
         case HighLevelActions.PUT_ONION:

@@ -82,7 +82,7 @@ def select_goal(
             # distribution, so that more motivated goal spaces are more likely
             # to be selected.
             # Convert each EMA to a strictly-positive weight
-            min_prob = 0.05
+            min_prob = 0.5
             temperature = 0.5  # controls the "sharpness" of the distribution
             weights = [(itm.ema + min_prob) ** temperature for itm in own_goal_space_emas]
             chosen_goal_space_ema = random.choices(own_goal_space_emas, weights=weights, k=1)[0]

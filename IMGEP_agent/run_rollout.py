@@ -54,7 +54,8 @@ for roll in range(ROLLOUTS):
 
     # -------- finish roll-out bookkeeping -------------------------------
     for idx, ag in enumerate(agents):
-        ag.finish_rollout(info, agents[1 - idx].goal_space_neuro_policies[0].goal.goal_id)
+        ag.finish_rollout(info, agents[1 - idx].goal_space_neuro_policies[0].goal.goal_id,
+                          agents[1 - idx].rollout_fitness)
 
     if roll == ROLLOUTS - 1:
         create_gif(ep_states, mdp, roll, True)
