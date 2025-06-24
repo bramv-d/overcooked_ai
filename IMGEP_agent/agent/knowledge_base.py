@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 from IMGEP_agent.agent.goals.goal_policy_input_vector import GOAL_POLICY_INPUT_VECTOR_SIZE
 from IMGEP_agent.agent.goals.goal_spaces import Goal
 from IMGEP_agent.agent.neuro_policy.high_level_actions import HighLevelActions
-from IMGEP_agent.hyper_parameters import NEURO_POLICY_HIDDEN_DIM
+from IMGEP_agent.hyper_parameters import AgentConfig
 
 
 @dataclass
@@ -34,11 +34,11 @@ class KnowledgeBase:
     # --------------------------------------------------------------------- #
     # construction / memory management
     # --------------------------------------------------------------------- #
-    def __init__(self, goal_spaces_length, init_capacity: int = 2048) -> None:
+    def __init__(self, goal_spaces_length, config: AgentConfig, init_capacity: int = 2048, ) -> None:
         num_tokens = len(HighLevelActions) + goal_spaces_length
-        self.param_dim = (GOAL_POLICY_INPUT_VECTOR_SIZE * NEURO_POLICY_HIDDEN_DIM  # W1
-                          + NEURO_POLICY_HIDDEN_DIM  # b1
-                          + NEURO_POLICY_HIDDEN_DIM * num_tokens  # W2
+        self.param_dim = (GOAL_POLICY_INPUT_VECTOR_SIZE * config.neuro_policy_hidden_dim  # W1
+                          + config.neuro_policy_hidden_dim  # b1
+                          + config.neuro_policy_hidden_dim * num_tokens  # W2
                           + num_tokens)  # b2
         self._capacity = init_capacity
         self._size = 0
@@ -157,11 +157,11 @@ class KnowledgeBase:
         )
 
     @classmethod
-    def load_buffer(cls, path: str) -> "KnowledgeBase":
+    def load_buffer(cls, path: str, config: AgentConfig) -> "KnowledgeBase":
         data = np.load(path, allow_pickle=True)
 
         # 1️⃣  Build an *empty* KB with the **correct** param_dim, not “goal_spaces_length”
-        kb = cls(goal_spaces_length=0)  # dummy
+        kb = cls(goal_spaces_length=0, config=config)  # dummy
         kb.param_dim = int(data["param_dim"])  # ← overwrite
 
         # 2️⃣  Allocate arrays with that exact width

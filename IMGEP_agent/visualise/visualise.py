@@ -227,12 +227,12 @@ def make_graphs():
 
         plot_fitness(data,
                      f"visualise/stats/fitness_plot_{ag}.png",
-                     smooth_k=5,
+                     smooth_k=1,
                      colors=colors)
 
         plot_goalspace_distribution(data,
                                     f"visualise/stats/goalspace_dist_{ag}.png",
-                                    num_bins=5,
+                                    num_bins=1,
                                     colors=colors)
 
         print_statistics(path, data)

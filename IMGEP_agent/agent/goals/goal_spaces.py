@@ -156,8 +156,8 @@ def create_goal_spaces() -> List[Goal]:
         place_object_space(GoalSpaceEnum.PLACE_ONION, ItemCode.ONION.value, TYPE_TO_CODE[COUNTER]),
         place_object_space(GoalSpaceEnum.PLACE_IN_POT, ItemCode.ONION.value, TYPE_TO_CODE[POT]),
         # pick_object_space(GoalSpaceEnum.PICKUP_ONION, ItemCode.ONION.value),
-        start_cooking_space(),
-        pickup_soup_space(),
+        # start_cooking_space(),
+        # pickup_soup_space(),
     ]
 
 

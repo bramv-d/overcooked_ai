@@ -1,26 +1,24 @@
+import random
 from collections import defaultdict
-from typing import Dict
+from typing import Dict, List, Tuple
 
 from IMGEP_agent.agent.goals.goal_spaces import Goal, get_goal_by_goal_id
 from IMGEP_agent.agent.knowledge_base import KnowledgeBase, RolloutRecord
-from IMGEP_agent.hyper_parameters import EXPLOIT_PROB, N_RECENT
+from IMGEP_agent.hyper_parameters import AgentConfig, IR_BONUS_CAP, IR_BONUS_SLOPE
+
+EPSILON = 1e-6  # numeric tolerance
 
 
 class GoalSpaceEMA:
-    # Holds the EMA of the intrinsic reward for a goal space
-    def __init__(self, goal: Goal, ema):
+    """Holds the EMA of the intrinsic reward for a goal space."""
+
+    def __init__(self, goal: Goal, ema: float):
         self.goal: Goal = goal
         self.ema = ema
 
 
-import random
-from typing import List
-
-EPSILON = 1e-6  # default numeric tolerance
-
-
-def _top_ema_candidates(gs_emas: List["GoalSpaceEMA"], eps: float = EPSILON) -> list["GoalSpaceEMA"]:
-    """Return ALL goal-space EMA objects whose EMA is (max ± eps)."""
+def _top_ema_candidates(gs_emas: List[GoalSpaceEMA], eps: float = EPSILON) -> List[GoalSpaceEMA]:
+    """Return all GS-EMA objects whose EMA is within eps of the maximum."""
     if not gs_emas:
         return []
     m = max(gs.ema for gs in gs_emas)
@@ -28,139 +26,87 @@ def _top_ema_candidates(gs_emas: List["GoalSpaceEMA"], eps: float = EPSILON) -> 
 
 
 def select_goal(
-        own_goal_space_emas: List["GoalSpaceEMA"],
-        other_goal_space_emas: List["GoalSpaceEMA"],
-        other_kb: "KnowledgeBase",
-        goal_spaces: List["Goal"],
-        own_kb: "KnowledgeBase",
-        eps: float = EPSILON,
+        own_goal_space_emas: List[GoalSpaceEMA],
+        other_goal_space_emas: List[GoalSpaceEMA],
+        other_kb: KnowledgeBase,
+        goal_spaces: List[Goal],
+        own_kb: KnowledgeBase,
+        config: AgentConfig,
         exploit: bool = False,
-) -> tuple[Goal, bool | None]:
+) -> Tuple[Goal, bool]:
     """
-    Pick a goal for *this* agent to pursue.
-
-    1. If we are at least as motivated (EMA ≥ other EMA within `eps`), choose
-       randomly among our own top-EMA goal spaces.
-    2. Otherwise (the other agent is more motivated), try to accommodate:
-       a. Randomly pick one of *their* top-EMA goal spaces.
-       b. Ask the other agent’s KB for the most recent partner‐goal mapping.
-          First with `exploit=True`; if that returns nothing, fall back to
-          `exploit=False`.
-       c. Map the returned `partner_goal_id` back to an actual `Goal` object.
-       d. If that mapping is missing or the KB had no memory at all, fall back
-          to our own top-EMA goal spaces (rule 1).
-
-    The function never raises and always returns *some* Goal as long as
-    `own_goal_space_emas` is non-empty.
+    Pick a goal either for ourselves or to accommodate the partner,
+    based on EMA of intrinsic rewards and recent KB mappings.
     """
-    # ------------------------------------------------------------------ #
-    # 1) Compute “top of chart” candidate lists for both agents
-    # ------------------------------------------------------------------ #
-    own_top = _top_ema_candidates(own_goal_space_emas, eps)
-    other_top = _top_ema_candidates(other_goal_space_emas, eps)
+    own_top = _top_ema_candidates(own_goal_space_emas, EPSILON)
+    other_top = _top_ema_candidates(other_goal_space_emas, EPSILON)
 
-    # Guards: we assume *we* have at least one goal space; if not, the design
-    # of the caller is broken.
     if not own_top:
         raise ValueError("select_goal() called with no own_goal_space_emas")
 
-    # ------------------------------------------------------------------ #
-    # 2) Decide whose motivation wins
-    # ------------------------------------------------------------------ #
-    own_max_ema = own_top[0].ema  # all same EMA ± eps
-    other_max_ema = other_top[0].ema if other_top else float("-inf")
+    # Whose motivation is stronger?
+    own_max = own_top[0].ema
+    other_max = other_top[0].ema if other_top else float("-inf")
+    our_turn = (own_max + EPSILON) >= other_max
 
-    our_turn = (own_max_ema + eps) >= other_max_ema  # >= within tolerance
+    # If it's our turn (or partner has no goals), pick one of our top EMAs
     if our_turn or not other_top:
-        # -------------------------------------------------------------- #
-        # Rule 1: pick one of *our* top-EMA goal spaces at random
-        # -------------------------------------------------------------- #
-        # Acount for the floating point tolerance
-        choose_random_goal = random.random() < EXPLOIT_PROB
-        if choose_random_goal:
-            return random.choice(goal_spaces), exploit
-        own_goal_space_emas = [gs for gs in own_top if gs.ema == own_max_ema]
-        own_goal_space = random.choice(own_goal_space_emas)
-        return get_goal_by_goal_id(own_goal_space.goal.goal_id, goal_spaces), exploit
+        candidates = [gs for gs in own_top if abs(gs.ema - own_max) < EPSILON]
+        chosen = random.choice(candidates)
+        return get_goal_by_goal_id(chosen.goal.goal_id, goal_spaces), exploit
 
+    # Otherwise, try to accommodate partner
+    partner_gs = random.choice(other_top)
+    partner_goal = partner_gs.goal
 
-
-    # ------------------------------------------------------------------ #
-    # 3) Their turn — try to accommodate
-    # ------------------------------------------------------------------ #
-    other_goal_space = random.choice(other_top)
-    other_goal = other_goal_space.goal
-
-    # (a) Look for the most recent partner-goal mapping in their KB
+    # Look up their most recent mapped partner-goal
     lookups = [
-        other_kb.nearest(1, goal=other_goal, exploit=True),
-        other_kb.nearest(1, goal=other_goal, exploit=False),
+        other_kb.nearest(1, goal=partner_goal, exploit=True),
+        other_kb.nearest(1, goal=partner_goal, exploit=False),
     ]
-    other_kb_recent = next((res for res in lookups if res), [])  # first non-empty
+    other_recent = next((res for res in lookups if res), [])
+    if other_recent:
+        mapped_id = other_recent[0].partner_goal_id
+        mapped_goal = get_goal_by_goal_id(mapped_id, goal_spaces)
+        ours = own_kb.nearest(10, goal=mapped_goal, exploit=True)
+        if ours and max(r.fitness for r in ours) > 0.5:
+            return mapped_goal, True
 
-    if other_kb_recent:
-        partner_goal_id = other_kb_recent[0].partner_goal_id
-        goal = get_goal_by_goal_id(partner_goal_id, goal_spaces)
-        own_recent = own_kb.nearest(10, goal=goal, exploit=True)
-        if max(r.fitness for r in own_recent) > 0.5:  # Only return a goal if it has a decent fitness
-            return goal, True
+    # Fallback: revert to one of our top
+    fallback = random.choice(own_top)
+    return get_goal_by_goal_id(fallback.goal.goal_id, goal_spaces), exploit
 
-    # ------------------------------------------------------------------ #
-    # 4) Fallback — couldn’t map or KB was empty; revert to our own top
-    # ------------------------------------------------------------------ #
-    own_goal = random.choice(own_goal_space_emas)
-    return get_goal_by_goal_id(own_goal.goal.goal_id, goal_spaces), True
-
-
-def get_goal_space_from_goal_id(goal_id: int, goal_spaces: List[Goal]) -> Goal:
-    """
-    Get the GoalSpace object from a goal_id.
-
-    Args:
-        goal_id (int): The ID of the goal.
-        goal_spaces (List[Goal]): List of all available GoalSpace objects.
-
-    Returns:
-        Goal: The GoalSpace object corresponding to the given goal_id.
-    """
-    for goal_space in goal_spaces:
-        if goal_space.goal_id == goal_id:
-            return goal_space
-    raise ValueError(f"Goal with ID {goal_id} not found in provided goal spaces.")
 
 def update_goal_space_ema(
         kb: KnowledgeBase,
         goal_spaces: List[Goal],
+        config: AgentConfig,
 ) -> List[GoalSpaceEMA]:
     """
-    Compute an EMA of intrinsic reward for each GoalSpace.
-
-    If we have fewer than 10 recent exploit roll-outs for a goal, add
-    a small bonus so that very sparse goal spaces remain eligible for
-    selection.
-
-        bonus = max(0,  BONUS_CAP - (len(records) * BONUS_SLOPE))
-               = 0.10 for 0  records
-               = 0.01 for 9  records
-               = 0    for 10 or more records
+    Compute an (approximate) EMA of intrinsic reward per goal space,
+    adding a small bonus for sparsely tried goals so they remain eligible.
     """
-    # 1) pull the N most-recent exploit records once
-    recent: List[RolloutRecord] = kb.nearest(N_RECENT, exploit=True)
+    # 1) get the N most recent exploit rollouts
+    recent: List[RolloutRecord] = kb.nearest(config.n_recent, exploit=True)
 
     # 2) bucket by goal_space_id
     by_goal: Dict[int, List[RolloutRecord]] = defaultdict(list)
     for r in recent:
         by_goal[r.goal_space_id].append(r)
 
-    # 3) build EMA objects
-    ema_list: List[GoalSpaceEMA] = []
+    # 3) compute a per-goal EMA + bonus
+    bonus_cutoff = int(IR_BONUS_CAP / IR_BONUS_SLOPE)
+    out: List[GoalSpaceEMA] = []
     for g in goal_spaces:
-        records = by_goal.get(g.goal_id, [])
-        n = len(records)
+        recs = by_goal.get(g.goal_id, [])
+        n = len(recs)
+        avg_ir = (sum(r.intrinsic_reward for r in recs) / n) if n > 0 else 0.0
 
-        # mean intrinsic reward over the bucket (0 if empty)
-        avg_ir = sum(r.intrinsic_reward for r in records) / n if n else 0.0
+        # if very sparse, give a decreasing bonus
+        if n < bonus_cutoff:
+            bonus = IR_BONUS_CAP - IR_BONUS_SLOPE * n
+            avg_ir += bonus
 
-        ema_list.append(GoalSpaceEMA(g, avg_ir))
+        out.append(GoalSpaceEMA(g, avg_ir))
 
-    return ema_list
+    return out

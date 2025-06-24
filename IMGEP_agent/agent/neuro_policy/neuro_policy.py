@@ -8,7 +8,7 @@ from IMGEP_agent.agent.goals.goal_policy_input_vector import GOAL_POLICY_INPUT_V
 from IMGEP_agent.agent.goals.goal_spaces import Goal
 from IMGEP_agent.agent.knowledge_base import KnowledgeBase
 from IMGEP_agent.agent.neuro_policy.high_level_actions import HighLevelActions
-from IMGEP_agent.hyper_parameters import ADAPTIVE_NOISE_STD, NEURO_POLICY_HIDDEN_DIM, PARENT_POLICY_RECENT_RECORDS
+from IMGEP_agent.hyper_parameters import AgentConfig
 
 
 def he_init(fan_in: int, fan_out: int) -> np.ndarray:
@@ -18,10 +18,10 @@ def he_init(fan_in: int, fan_out: int) -> np.ndarray:
 
 
 class NeuroPolicy:
-    def __init__(self, goal_spaces: List[Goal], theta: np.ndarray | None = None):
+    def __init__(self, goal_spaces: List[Goal], config: AgentConfig, theta: np.ndarray | None = None):
 
         self.inp_dim = GOAL_POLICY_INPUT_VECTOR_SIZE
-        self.hidden_dim = NEURO_POLICY_HIDDEN_DIM
+        self.hidden_dim = config.neuro_policy_hidden_dim
         self.num_tokens = len(HighLevelActions) + len(goal_spaces)
 
         if theta is None:  # fresh initialization
@@ -81,18 +81,20 @@ class GoalSpaceNeuroPolicy:
         self.exploit = exploit
 
 
-def get_neuro_policy(selected_goal: Goal, kb: KnowledgeBase, goal_spaces: List[Goal], exploit: bool) -> NeuroPolicy:
+def get_neuro_policy(selected_goal: Goal, kb: KnowledgeBase, goal_spaces: List[Goal], exploit: bool,
+                     config: AgentConfig) -> NeuroPolicy:
     if not kb.nearest(goal=selected_goal, k=1):
-        return NeuroPolicy(goal_spaces)
-    rec = kb.nearest(goal=selected_goal, k=PARENT_POLICY_RECENT_RECORDS)
+        return NeuroPolicy(goal_spaces, config)  # no records for this goal, return a fresh policy
     if exploit:
+        rec = kb.nearest(goal=selected_goal, k=config.parent_policy_recent)
         # exploit: use the best policy from the knowledge base
         best_idx = np.argmax([r.fitness for r in rec])
-        return NeuroPolicy(theta=rec[best_idx].theta, goal_spaces=goal_spaces)
+        return NeuroPolicy(theta=rec[best_idx].theta, goal_spaces=goal_spaces, config=config)
 
+    rec = kb.nearest(goal=selected_goal, k=config.mutate_records)
     # explore: pick a random parent policy to mutate from
     parent_policy = random.choice(rec)
-    adaptive_noise = ADAPTIVE_NOISE_STD / (
-            parent_policy.intrinsic_reward + ADAPTIVE_NOISE_STD)  # more noise when progress is low
+    adaptive_noise = config.adaptive_noise_std / (
+            parent_policy.intrinsic_reward + config.adaptive_noise_std)  # more noise when progress is low
     child_theta = parent_policy.theta + np.random.normal(0, adaptive_noise, parent_policy.theta.shape)
-    return NeuroPolicy(theta=child_theta, goal_spaces=goal_spaces)
+    return NeuroPolicy(theta=child_theta, goal_spaces=goal_spaces, config=config)

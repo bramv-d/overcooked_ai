@@ -1,21 +1,26 @@
 # ROLLOUT PARAMETERS
-HORIZON = 100  # number of steps to run per rollout
+HORIZON = 50  # number of steps to run per rollout
 ROLLOUTS = 5000  # number of rollouts to run
 LAYOUT_ID = 22  # layout index to use from the layouts list in overcooked_ai_py
 LOAD_KB = False  # whether to load the knowledge base from a file or not
 
-# AGENT PARAMETERS
-EXPLOIT_PROB = 0.2  # probability of exploiting the current policy
+# ---- INTRINSIC REWARD ---
+IR_BONUS_CAP: float = 0.20
+IR_BONUS_SLOPE: float = 0.01
+# config.py
+from dataclasses import dataclass
 
-### NEURAL NETWORK PARAMETERS
-NEURO_POLICY_HIDDEN_DIM = 128  # hidden layer size for the neural network policy
-ADAPTIVE_NOISE_STD = 0.1  # standard deviation for the adaptive noise added to the policy outputs
-PARENT_POLICY_RECENT_RECORDS = 50  # number of recent records to consider when selecting a parent policy
 
-### GOAL SELECTION PARAMETERS
-GOAL_EMA_K = 50  # How many past exploit records to include in the EMA
-GOAL_GREEDY_PROB = 0.8  # Probability of selecting the greedy goal space
-N_RECENT = 100
-BONUS_CAP = 0.10  # maximum bonus when we have 0 records
-BONUS_SLOPE = 0.01  # bonus decays 0.01 per missing record
-BONUS_FLOOR = 10  # apply bonus only when len(records) < 10
+@dataclass
+class AgentConfig:
+    # -------- AGENT ----------
+    exploit_prob: float = 0.5
+
+    # ------ NEURO POLICY -----
+    neuro_policy_hidden_dim: int = 20
+    adaptive_noise_std: float = 0.25
+    parent_policy_recent: int = 100
+    mutate_records: int = 20
+
+    # ----- GOAL SELECTION ----
+    n_recent: int = 80

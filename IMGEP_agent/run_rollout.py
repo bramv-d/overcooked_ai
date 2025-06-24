@@ -3,7 +3,7 @@ import random
 
 from IMGEP_agent.agent.agent import IMGEPAgent
 from IMGEP_agent.agent.knowledge_base import KnowledgeBase
-from IMGEP_agent.hyper_parameters import EXPLOIT_PROB, HORIZON, LAYOUT_ID, LOAD_KB, ROLLOUTS
+from IMGEP_agent.hyper_parameters import AgentConfig, HORIZON, LAYOUT_ID, LOAD_KB, ROLLOUTS
 from IMGEP_agent.visualise.create_gif import create_gif
 from IMGEP_agent.visualise.visualise import make_graphs
 from overcooked_ai_py.data.layouts.layouts import layouts
@@ -11,7 +11,7 @@ from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 
 layout_name = layouts[LAYOUT_ID]
-
+config = AgentConfig()
 # ---------------------------------------------------------------- env + agents
 
 mdp: OvercookedGridworld = OvercookedGridworld.from_layout_name(layout_name)
@@ -29,18 +29,18 @@ env: OvercookedEnv = OvercookedEnv.from_mdp(mdp, horizon=HORIZON, info_level=0, 
 mp = env.mp
 mlam = env.mlam
 
-agents = [IMGEPAgent(env, mdp, agent_id) for agent_id in range(2)]
+agents = [IMGEPAgent(env, mdp, agent_id, config=config) for agent_id in range(2)]
 if LOAD_KB:
     for ag in agents:
         kb_path = f"agent/kb/buffer_rollouts{ag.agent_id}.npz"
-        ag.kb = KnowledgeBase.load_buffer(kb_path)
+        ag.kb = KnowledgeBase.load_buffer(kb_path, config=config)
         ag.update_goal_space_emas()
 # ---------------------------------------------------------------- run one roll-out
 
 for roll in range(ROLLOUTS):
     print(roll)
     env.reset(regen_mdp=True)
-    exploit = random.random() < EXPLOIT_PROB
+    exploit = random.random() < config.exploit_prob
     for ag in agents: ag.reset(other_goal_space_emas=agents[1 - ag.agent_id].goal_space_emas,
                                other_kb=agents[1 - ag.agent_id].kb, mdp=mdp, exploit=exploit)
     done = False
