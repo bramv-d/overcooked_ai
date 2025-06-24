@@ -3,7 +3,7 @@ from typing import Dict
 
 from IMGEP_agent.agent.goals.goal_spaces import Goal, get_goal_by_goal_id
 from IMGEP_agent.agent.knowledge_base import KnowledgeBase, RolloutRecord
-from IMGEP_agent.hyper_parameters import N_RECENT
+from IMGEP_agent.hyper_parameters import EXPLOIT_PROB, N_RECENT
 
 
 class GoalSpaceEMA:
@@ -75,21 +75,14 @@ def select_goal(
         # -------------------------------------------------------------- #
         # Rule 1: pick one of *our* top-EMA goal spaces at random
         # -------------------------------------------------------------- #
-        if exploit:
-            return random.choice(own_top).goal, True
-        else:
-            # If not exploit, return a goal using the EMA as a probability
-            # distribution, so that more motivated goal spaces are more likely
-            # to be selected.
-            # Convert each EMA to a strictly-positive weight
-            min_prob = 0.5
-            temperature = 0.5  # controls the "sharpness" of the distribution
-            weights = [(itm.ema + min_prob) ** temperature for itm in own_goal_space_emas]
-            chosen_goal_space_ema = random.choices(own_goal_space_emas, weights=weights, k=1)[0]
-            # Return the goal from the chosen goal space
+        # Acount for the floating point tolerance
+        choose_random_goal = random.random() < EXPLOIT_PROB
+        if choose_random_goal:
+            return random.choice(goal_spaces), exploit
+        own_goal_space_emas = [gs for gs in own_top if gs.ema == own_max_ema]
+        own_goal_space = random.choice(own_goal_space_emas)
+        return get_goal_by_goal_id(own_goal_space.goal.goal_id, goal_spaces), exploit
 
-            # random.choices does the normalized soft-max for you
-            return get_goal_space_from_goal_id(chosen_goal_space_ema.goal.goal_id, goal_spaces), False
 
 
     # ------------------------------------------------------------------ #
