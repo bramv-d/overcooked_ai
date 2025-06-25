@@ -25,11 +25,10 @@ class AgentConfigEstimator(BaseEstimator):
                  adaptive_noise_std: float = 0.1,
                  parent_policy_recent: int = 50,
                  mutate_records: int = 64,
-                 goal_ema_k: int = 50,
-                 goal_greedy_prob: float = 0.8,
+                 neuro_evolution_multiplier: int = 10,
                  n_recent: int = 100,
-                 ir_bonus_cap: float = 0.20,
-                 ir_bonus_slope: float = 0.01,
+                 minimum_goal_fitness: float = 0.5,
+                 ir_avg_prev_records: int = 10,
                  random_state: int = 42):
         # These will be tuned by sklearn
         self.exploit_prob = exploit_prob
@@ -37,11 +36,10 @@ class AgentConfigEstimator(BaseEstimator):
         self.adaptive_noise_std = adaptive_noise_std
         self.parent_policy_recent = parent_policy_recent
         self.mutate_records = mutate_records
-        self.goal_ema_k = goal_ema_k
-        self.goal_greedy_prob = goal_greedy_prob
+        self.neuro_evolution_multiplier = neuro_evolution_multiplier
         self.n_recent = n_recent
-        self.ir_bonus_cap = ir_bonus_cap
-        self.ir_bonus_slope = ir_bonus_slope
+        self.minimum_goal_fitness = minimum_goal_fitness
+        self.ir_avg_prev_records = ir_avg_prev_records
         self.random_state = random_state
 
         self.best_score_ = None
@@ -55,6 +53,10 @@ class AgentConfigEstimator(BaseEstimator):
             parent_policy_recent=self.parent_policy_recent,
             mutate_records=self.mutate_records,
             n_recent=self.n_recent,
+            neuro_evolution_multiplier=self.neuro_evolution_multiplier,
+            minimum_goal_fitness=self.minimum_goal_fitness,
+            ir_avg_prev_records=self.ir_avg_prev_records,
+
         )
 
         # 2) set up env + agents exactly as in your script
@@ -115,7 +117,7 @@ class AgentConfigEstimator(BaseEstimator):
                 ag.finish_rollout(info,
                                   partner.goal_space_neuro_policies[0].goal.goal_id,
                                   partner.rollout_fitness)
-                total_fitness += partner.rollout_fitness
+                total_fitness += agents[idx].rollout_fitness
 
         # average fitness per rollout
         avg_fitness = total_fitness / (ROLLOUTS * 2)
@@ -132,17 +134,20 @@ class AgentConfigEstimator(BaseEstimator):
 
 param_distributions: Dict[str, Any] = {
     'exploit_prob': np.linspace(0.0, 1.0, 11),
-    'neuro_policy_hidden_dim': [10, 20, 50, 100],
+    'neuro_policy_hidden_dim': [50, 100, 125, 150, 200],
     'adaptive_noise_std': np.linspace(0.0, 0.5, 11),
     'parent_policy_recent': [10, 50, 100],
-    'mutate_records': [20, 40, 80, 120],
-    'n_recent': [30, 50, 80],
+    'mutate_records': [5, 10, 20, 40],
+    'n_recent': [25, 50, 75, 100],
+    'neuro_evolution_multiplier': [2, 5, 10, 15],
+    'ir_avg_prev_records': [5, 10, 20, 40],
+    'minimum_goal_fitness': np.linspace(0.4, 1.0, 11),
 }
 ps = PredefinedSplit(test_fold=[0])
 optimizer = RandomizedSearchCV(
     estimator=AgentConfigEstimator(random_state=42),
     param_distributions=param_distributions,
-    n_iter=20,
+    n_iter=50,
     cv=ps,
     scoring=None,  # uses estimator.score()
     random_state=42,

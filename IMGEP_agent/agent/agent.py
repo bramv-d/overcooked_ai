@@ -73,6 +73,8 @@ class IMGEPAgent(Agent):
         ]  # Put the main neuro policy in the first position
 
     def action(self, state: OvercookedState) -> Action:
+        if self.goal_reach_time_step:
+            return Action.STAY
         self.t += 1
 
         gs = self.goal_space_neuro_policies[-1].goal
@@ -103,26 +105,36 @@ class IMGEPAgent(Agent):
         obs_vec = get_goal_policy_input_vector(state, self.mdp, self.mp, self.agent_id)
 
         # ----------------- high-level action selection ----------------------
-        neuro_policy_token = self.goal_space_neuro_policies[-1].neuro_policy.select_token(obs_vec, greedy=True)
+        neuro_policy_token = self.goal_space_neuro_policies[-1].neuro_policy.select_token(obs_vec, greedy=exploit)
+        if neuro_policy_token >= len(HighLevelActions):
+            selected_goal = self.goal_spaces[neuro_policy_token - len(HighLevelActions)]
+            # If the chosen goal is itself or the fitness is not high enough, do not use the decision to use this
+            rec = self.kb.nearest(goal=selected_goal, k=1, exploit=True)
+
+            if rec and rec[0].fitness >= self.config.minimum_goal_fitness and selected_goal != gs:
+                self.goal_space_neuro_policies.append(
+                    GoalSpaceNeuroPolicy(
+                        goal=selected_goal,
+                        neuro_policy=get_neuro_policy(
+                            selected_goal=selected_goal,
+                            kb=self.kb,
+                            exploit=True,
+                            goal_spaces=self.goal_spaces,
+                            config=self.config
+                        ),
+                        exploit=True
+                    )
+                )
+            neuro_policy_token = self.goal_space_neuro_policies[-1].neuro_policy.select_token(obs_vec, greedy=exploit)
+
         if neuro_policy_token < len(HighLevelActions):
             # If the token is a high-level action, we need to get the motion goals for that action
             token = HighLevelActions(neuro_policy_token)
+            if token != HighLevelActions.WAIT:
+                self.rollout_fitness -= 0.01
             motion_goals = get_motion_goals(self.mlam, self.mdp, token, state)
             self.path = get_plan(state.players[self.agent_id].pos_and_or, motion_goals, self.mlam)
-        else:
-            self.goal_space_neuro_policies.append(
-                GoalSpaceNeuroPolicy(
-                    goal=self.goal_spaces[neuro_policy_token - len(HighLevelActions)],
-                    neuro_policy=get_neuro_policy(
-                        selected_goal=self.goal_spaces[neuro_policy_token - len(HighLevelActions)],
-                        kb=self.kb,
-                        exploit=True,
-                        goal_spaces=self.goal_spaces,
-                        config=self.config
-                    ),
-                    exploit=True
-                )
-            )
+
 
         if not self.path:
             legal_actions = list(Action.MOTION_ACTIONS)
@@ -142,8 +154,10 @@ class IMGEPAgent(Agent):
         goal = self.goal_space_neuro_policies[0].goal  # The first goal is the main goal space
         neuro_policy = self.goal_space_neuro_policies[0].neuro_policy
         exploit = self.goal_space_neuro_policies[0].exploit
-        prev_record = self.kb.nearest(goal=goal, k=1, exploit=exploit)
-        prev_f = prev_record[0].fitness if prev_record else 0.0
+        prev_record = self.kb.nearest(goal=goal, k=self.config.ir_avg_prev_records, exploit=exploit)
+        # Calculate avarage fitness of the previous records
+        avg_fitness = sum(r.fitness for r in prev_record) / len(prev_record) if prev_record else 0.0
+        prev_f = avg_fitness if prev_record else 0.0
         rollout_fitness = self.rollout_fitness
         # rollout_fitness += partner_fitness / 4
         fitness_difference = rollout_fitness - prev_f
@@ -152,7 +166,7 @@ class IMGEPAgent(Agent):
         if exploit:
             record_amount = 1
         else:
-            record_amount = max(1, int(5 * (r_i + shared_reward / 50)))
+            record_amount = max(1, int(r_i * self.config.neuro_evolution_multiplier))
 
         # Get the previous rollout index from the kb and increment it
         prev_record = self.kb.nearest(1)

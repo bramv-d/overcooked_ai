@@ -17,6 +17,7 @@ def get_goal_policy_input_vector(
         player_id: int,
 ) -> np.ndarray:
     me: PlayerState = state.players[player_id]
+    other: PlayerState = state.players[1 - player_id]
     pot_states = mdp.get_pot_states(state)
 
     # Held object one-hot

@@ -69,7 +69,7 @@ def select_goal(
         mapped_id = other_recent[0].partner_goal_id
         mapped_goal = get_goal_by_goal_id(mapped_id, goal_spaces)
         ours = own_kb.nearest(10, goal=mapped_goal, exploit=True)
-        if ours and max(r.fitness for r in ours) > 0.5:
+        if ours and max(r.fitness for r in ours) > config.minimum_goal_fitness:
             return mapped_goal, True
 
     # Fallback: revert to one of our top

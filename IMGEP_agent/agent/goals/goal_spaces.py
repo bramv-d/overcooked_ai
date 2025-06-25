@@ -2,7 +2,6 @@ from enum import IntEnum
 from typing import List
 
 from IMGEP_agent.agent.helpers.item_codes import ItemCode
-from IMGEP_agent.hyper_parameters import HORIZON
 from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.layout_generator import COUNTER, POT, TYPE_TO_CODE
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, PlayerState
@@ -37,7 +36,7 @@ def pick_object_space(goal_id: GoalSpaceEnum, object_code: int) -> Goal:
                 agent_id: int, mdp: OvercookedGridworld):
         if pick_step is None:
             return 0.0
-        return 1.0 - (pick_step / max(HORIZON, 1))
+        return 1.0
 
     def success(agent_id: int, state: OvercookedState, previous_state: OvercookedState,
                 mdp: OvercookedGridworld):
@@ -56,7 +55,7 @@ def place_object_space(goal_id: GoalSpaceEnum, object_code: int, terrain_type: i
                 agent_id: int, mdp: OvercookedGridworld):
         if pick_step is None:
             return 0.0
-        return 1.0 - (pick_step / max(HORIZON, 1))
+        return 1.0
 
     def success(agent_id: int, state: OvercookedState, previous_state: OvercookedState,
                 mdp: OvercookedGridworld):
@@ -155,8 +154,7 @@ def create_goal_spaces() -> List[Goal]:
     return [
         place_object_space(GoalSpaceEnum.PLACE_ONION, ItemCode.ONION.value, TYPE_TO_CODE[COUNTER]),
         place_object_space(GoalSpaceEnum.PLACE_IN_POT, ItemCode.ONION.value, TYPE_TO_CODE[POT]),
-        # pick_object_space(GoalSpaceEnum.PICKUP_ONION, ItemCode.ONION.value),
-        # start_cooking_space(),
+        start_cooking_space(),
         # pickup_soup_space(),
     ]
 

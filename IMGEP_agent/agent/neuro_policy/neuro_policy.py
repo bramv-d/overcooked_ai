@@ -95,6 +95,6 @@ def get_neuro_policy(selected_goal: Goal, kb: KnowledgeBase, goal_spaces: List[G
     # explore: pick a random parent policy to mutate from
     parent_policy = random.choice(rec)
     adaptive_noise = config.adaptive_noise_std / (
-            parent_policy.intrinsic_reward + config.adaptive_noise_std)  # more noise when progress is low
+            max(0, parent_policy.intrinsic_reward) + config.adaptive_noise_std)  # more noise when progress is low
     child_theta = parent_policy.theta + np.random.normal(0, adaptive_noise, parent_policy.theta.shape)
     return NeuroPolicy(theta=child_theta, goal_spaces=goal_spaces, config=config)
