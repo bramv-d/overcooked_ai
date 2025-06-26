@@ -4,22 +4,21 @@ from typing import List, Optional
 import numpy as np
 from numpy.typing import NDArray
 
-from IMGEP_agent.agent.goals.goal_policy_input_vector import GOAL_POLICY_INPUT_VECTOR_SIZE
-from IMGEP_agent.agent.goals.goal_spaces import Goal
 from IMGEP_agent.agent.neuro_policy.high_level_actions import HighLevelActions
+from IMGEP_agent.agent.neuro_policy.neuro_policy_input_vector import POLICY_INPUT_VECTOR_SIZE
 from IMGEP_agent.hyper_parameters import AgentConfig
+from IMGEP_agent.shared_agent.goal_spaces import Goal
 
 
 @dataclass
 class RolloutRecord:
     goal_space_id: int
-    theta: NDArray[np.floating]  # policy parameters
-    partner_goal_id: int
+    theta1: NDArray[np.floating]  # policy parameters
+    theta0: NDArray[np.floating]
     fitness: float
     intrinsic_reward: float
     exploit: bool = False
     rollout_idx: int = 0
-    shared_reward: int = 0
 
 class KnowledgeBase:
     """
@@ -35,8 +34,8 @@ class KnowledgeBase:
     # construction / memory management
     # --------------------------------------------------------------------- #
     def __init__(self, goal_spaces_length, config: AgentConfig, init_capacity: int = 2048, ) -> None:
-        num_tokens = len(HighLevelActions) + goal_spaces_length
-        self.param_dim = (GOAL_POLICY_INPUT_VECTOR_SIZE * config.neuro_policy_hidden_dim  # W1
+        num_tokens = len(HighLevelActions)
+        self.param_dim = (POLICY_INPUT_VECTOR_SIZE * config.neuro_policy_hidden_dim  # W1
                           + config.neuro_policy_hidden_dim  # b1
                           + config.neuro_policy_hidden_dim * num_tokens  # W2
                           + num_tokens)  # b2
@@ -49,8 +48,10 @@ class KnowledgeBase:
         self._intr_reward = np.empty(init_capacity, dtype=np.float32)
         self._exploit = np.empty(init_capacity, dtype=bool)
         self._rollout_idx = np.empty(init_capacity, dtype=np.int32)
-        self._theta = np.empty((init_capacity, self.param_dim),
-                               dtype=np.float32)
+        self._theta1 = np.empty((init_capacity, self.param_dim),
+                                dtype=np.float32)
+        self._theta0 = np.empty((init_capacity, self.param_dim),
+                                dtype=np.float32)
         self._partner_goal = np.empty(init_capacity, dtype=np.int32)
         self._shared_reward = np.empty(init_capacity, dtype=np.int32)
 
@@ -62,8 +63,9 @@ class KnowledgeBase:
         self._intr_reward = np.resize(self._intr_reward, new_cap)
         self._exploit = np.resize(self._exploit, new_cap)
         self._rollout_idx = np.resize(self._rollout_idx, new_cap)
-        self._theta = np.resize(self._theta,
-                                (new_cap, self.param_dim))
+        self._theta1 = np.resize(self._theta1,
+                                 (new_cap, self.param_dim))
+        self._theta0 = np.resize(self._theta0, (new_cap, self.param_dim))
         self._capacity = new_cap
         self._partner_goal = np.resize(self._partner_goal, new_cap)
         self._shared_reward = np.resize(self._shared_reward, new_cap)
@@ -82,10 +84,9 @@ class KnowledgeBase:
         self._intr_reward[i] = rec.intrinsic_reward
         self._exploit[i] = rec.exploit
         self._rollout_idx[i] = rec.rollout_idx
-        self._theta[i] = rec.theta
-        self._partner_goal[i] = rec.partner_goal_id
+        self._theta1[i] = rec.theta1
+        self._theta0[i] = rec.theta0  # assuming theta2 is the same as theta1
         self._size += 1
-        self._shared_reward[i] = rec.shared_reward
 
     def nearest(
             self,
@@ -125,13 +126,12 @@ class KnowledgeBase:
         """Internal helper to rebuild a RolloutRecord dataclass."""
         return RolloutRecord(
             goal_space_id=int(self._goal_id[i]),
-            theta=self._theta[i].copy(),  # copy to keep immutable
+            theta1=self._theta1[i].copy(),
+            theta0=self._theta0[i].copy(),
             fitness=float(self._fitness[i]),
             intrinsic_reward=float(self._intr_reward[i]),
             exploit=bool(self._exploit[i]),
             rollout_idx=int(self._rollout_idx[i]),
-            partner_goal_id=int(self._partner_goal[i]),
-            shared_reward=int(self._shared_reward[i]),
         )
 
     # ------------------------------------------------------------------ #
@@ -151,9 +151,8 @@ class KnowledgeBase:
             intr_reward=self._intr_reward[:self._size],
             exploit=self._exploit[:self._size],
             rollout_idx=self._rollout_idx[:self._size],
-            partner_goal=self._partner_goal[:self._size],
-            theta=self._theta[:self._size],
-            shared_reward=self._shared_reward[:self._size],
+            theta1=self._theta1[:self._size],
+            theta0=self._theta0[:self._size],
         )
 
     @classmethod
@@ -165,7 +164,7 @@ class KnowledgeBase:
         kb.param_dim = int(data["param_dim"])  # ← overwrite
 
         # 2️⃣  Allocate arrays with that exact width
-        kb._theta = np.empty((int(data["size"]), kb.param_dim), dtype=np.float32)
+        kb._theta1 = np.empty((int(data["size"]), kb.param_dim), dtype=np.float32)
 
         # ---- copy payload ---------------------------------------------------
         kb._size = int(data["size"])
@@ -174,8 +173,7 @@ class KnowledgeBase:
         kb._intr_reward = data["intr_reward"]
         kb._exploit = data["exploit"]
         kb._rollout_idx = data["rollout_idx"]
-        kb._theta[:] = data["theta"]
+        kb._theta1[:] = data["theta1"]
+        kb._theta0 = data["theta0"]
         kb._capacity = kb._size
-        kb._partner_goal = data["partner_goal"]
-        kb._shared_reward = data["shared_reward"]
         return kb

@@ -9,7 +9,7 @@ from typing import Dict, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 
-from IMGEP_agent.agent.goals.goal_spaces import GoalSpaceEnum
+from IMGEP_agent.shared_agent.goal_spaces import GoalSpaceEnum
 
 
 # ------------------- I/O ----------------------------------------------------
@@ -20,7 +20,8 @@ def _load_npz(path: str) -> Dict[str, np.ndarray]:
     arr = np.load(path, mmap_mode='r', allow_pickle=False)
     return {
         "goal_id": arr["goal_id"].astype(np.int32, copy=False),
-        "theta": arr["theta"],  # NOT used for plots
+        "theta1": arr["theta1"],  # NOT used for plots
+        "theta0": arr["theta0"],  # NOT used for plots
         "fitness": arr["fitness"].astype(np.float32, copy=False),
         "intr_reward": arr["intr_reward"].astype(np.float32, copy=False),
         "exploit": arr["exploit"].astype(bool, copy=False),
@@ -213,29 +214,28 @@ def print_statistics(buffer_path: str, data):
 def make_graphs():
     os.makedirs("visualise/stats", exist_ok=True)
 
-    for ag in range(2):
-        path = f"agent/kb/buffer_rollouts{ag}.npz"
-        if not os.path.exists(path):
-            print(f"❌ {path} not found — skipping.")
-            continue
+    path = f"agent/kb/buffer_rollout.npz"
+    if not os.path.exists(path):
+        print(f"❌ {path} not found — skipping.")
+        return
 
-        print(f"✅ Loading {path}")
-        data = load_buffer(path)
+    print(f"✅ Loading {path}")
+    data = load_buffer(path)
 
-        goal_names = _goal_name_array(data["goal_id"])
-        colors = get_goal_space_colors(goal_names)
+    goal_names = _goal_name_array(data["goal_id"])
+    colors = get_goal_space_colors(goal_names)
 
-        plot_fitness(data,
-                     f"visualise/stats/fitness_plot_{ag}.png",
-                     smooth_k=5,
-                     colors=colors)
+    plot_fitness(data,
+                 f"visualise/stats/fitness_plot.png",
+                 smooth_k=5,
+                 colors=colors)
 
-        plot_goalspace_distribution(data,
-                                    f"visualise/stats/goalspace_dist_{ag}.png",
-                                    num_bins=5,
-                                    colors=colors)
+    plot_goalspace_distribution(data,
+                                f"visualise/stats/goalspace_dist.png",
+                                num_bins=5,
+                                colors=colors)
 
-        print_statistics(path, data)
+    print_statistics(path, data)
 
 
 if __name__ == "__main__":

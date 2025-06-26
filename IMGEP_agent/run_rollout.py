@@ -1,9 +1,7 @@
 import copy
-import random
 
-from IMGEP_agent.agent.agent import IMGEPAgent
-from IMGEP_agent.agent.knowledge_base import KnowledgeBase
 from IMGEP_agent.hyper_parameters import AgentConfig, HORIZON, LAYOUT_ID, LOAD_KB, ROLLOUTS
+from IMGEP_agent.shared_agent.agent_pair import AgentPair
 from IMGEP_agent.visualise.create_gif import create_gif
 from IMGEP_agent.visualise.visualise import make_graphs
 from overcooked_ai_py.data.layouts.layouts import layouts
@@ -24,41 +22,33 @@ base_params = {
     "same_motion_goals": True,
 }
 env: OvercookedEnv = OvercookedEnv.from_mdp(mdp, horizon=HORIZON, info_level=0, mlam_params=base_params)
-
+agent_pair = AgentPair(env, mdp, config)
 
 mp = env.mp
 mlam = env.mlam
 
-agents = [IMGEPAgent(env, mdp, agent_id, config=config) for agent_id in range(2)]
 if LOAD_KB:
-    for ag in agents:
-        kb_path = f"agent/kb/buffer_rollouts{ag.agent_id}.npz"
-        ag.kb = KnowledgeBase.load_buffer(kb_path, config=config)
-        ag.update_goal_space_emas()
+    agent_pair.load_kb()
 # ---------------------------------------------------------------- run one roll-out
 
 for roll in range(ROLLOUTS):
     print(roll)
     env.reset(regen_mdp=True)
-    exploit = random.random() < config.exploit_prob
-    for ag in agents: ag.reset(other_goal_space_emas=agents[1 - ag.agent_id].goal_space_emas,
-                               other_kb=agents[1 - ag.agent_id].kb, mdp=mdp, exploit=exploit)
+    agent_pair.reset(mdp)
     done = False
     state = env.state
     # -------- record trajectory -----------------------------------------
     ep_states = [copy.deepcopy(state)]  # include start state
     while not done:
-        joint = [ag.action(state) for ag in agents]
+        joint = agent_pair.action(state)
         state, _, done, info = env.step(joint)
         ep_states.append(copy.deepcopy(state))  # save each next state
 
     # -------- finish roll-out bookkeeping -------------------------------
-    for idx, ag in enumerate(agents):
-        ag.finish_rollout(info, agents[1 - idx].goal_space_neuro_policies[0].goal.goal_id,
-                          agents[1 - idx].rollout_fitness)
+    agent_pair.finish_rollout()
 
     if roll == ROLLOUTS - 1:
         create_gif(ep_states, mdp, roll, True)
 
-for ag in agents: ag.kb.save_buffer("agent/kb/buffer_rollouts" + str(ag.agent_id))
+agent_pair.kb.save_buffer("agent/kb/buffer_rollout.npz")
 make_graphs()
