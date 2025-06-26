@@ -8,7 +8,7 @@ from IMGEP_agent.agent.helpers.get_plan import get_plan
 from IMGEP_agent.agent.knowledge_base import KnowledgeBase, RolloutRecord
 from IMGEP_agent.agent.neuro_policy.high_level_actions import HighLevelActions, get_motion_goals
 from IMGEP_agent.agent.neuro_policy.neuro_policy import GoalSpaceNeuroPolicy, get_neuro_policy
-from IMGEP_agent.hyper_parameters import AgentConfig
+from IMGEP_agent.hyper_parameters import AgentConfig, GREEDY
 from overcooked_ai_py.agents.agent import Agent
 from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
@@ -42,6 +42,7 @@ class IMGEPAgent(Agent):
         self.goal_reach_time_step = None
         self.rollout_fitness = 0.0
         self.path = []
+        self.own_episode: bool = False  # Whether the episode is for accommodating this agent or the partner agent
 
 
 
@@ -62,9 +63,11 @@ class IMGEPAgent(Agent):
         self.previous_state = None
         reset_goal_spaces(self.goal_spaces)
         exploit = random.random() < self.config.exploit_prob
-        chosen_goal, exploit = select_goal(self.goal_space_emas, other_goal_space_emas=other_goal_space_emas,
-                                           other_kb=other_kb, goal_spaces=self.goal_spaces, own_kb=self.kb,
-                                           exploit=exploit, config=self.config)
+        chosen_goal, exploit, self.own_episode = select_goal(self.goal_space_emas,
+                                                             other_goal_space_emas=other_goal_space_emas,
+                                                             other_kb=other_kb, goal_spaces=self.goal_spaces,
+                                                             own_kb=self.kb,
+                                                             exploit=exploit, config=self.config)
 
         neuro_policy = get_neuro_policy(selected_goal=chosen_goal, kb=self.kb, exploit=exploit,
                                         goal_spaces=self.goal_spaces, config=self.config)
@@ -87,8 +90,7 @@ class IMGEPAgent(Agent):
             else:
                 self.goal_space_neuro_policies.pop()
 
-        if self.previous_state and (self.goal_reach_time_step is None or self.t == self.goal_reach_time_step) and len(
-                self.goal_space_neuro_policies) == 1:
+        if self.t == self.goal_reach_time_step:
             self.rollout_fitness += self.goal_space_neuro_policies[0].goal.fitness(
                 # Only add the fitness of the first goal space
                 pick_step=self.goal_reach_time_step,
@@ -105,7 +107,8 @@ class IMGEPAgent(Agent):
         obs_vec = get_goal_policy_input_vector(state, self.mdp, self.mp, self.agent_id)
 
         # ----------------- high-level action selection ----------------------
-        neuro_policy_token = self.goal_space_neuro_policies[-1].neuro_policy.select_token(obs_vec, greedy=exploit)
+        greedy = GREEDY or exploit
+        neuro_policy_token = self.goal_space_neuro_policies[-1].neuro_policy.select_token(obs_vec, greedy=greedy)
         if neuro_policy_token >= len(HighLevelActions):
             selected_goal = self.goal_spaces[neuro_policy_token - len(HighLevelActions)]
             # If the chosen goal is itself or the fitness is not high enough, do not use the decision to use this
@@ -125,7 +128,7 @@ class IMGEPAgent(Agent):
                         exploit=True
                     )
                 )
-            neuro_policy_token = self.goal_space_neuro_policies[-1].neuro_policy.select_token(obs_vec, greedy=exploit)
+            neuro_policy_token = self.goal_space_neuro_policies[-1].neuro_policy.select_token(obs_vec, greedy=greedy)
 
         if neuro_policy_token < len(HighLevelActions):
             # If the token is a high-level action, we need to get the motion goals for that action
@@ -156,17 +159,14 @@ class IMGEPAgent(Agent):
         exploit = self.goal_space_neuro_policies[0].exploit
         prev_record = self.kb.nearest(goal=goal, k=self.config.ir_avg_prev_records, exploit=exploit)
         # Calculate avarage fitness of the previous records
-        avg_fitness = sum(r.fitness for r in prev_record) / len(prev_record) if prev_record else 0.0
-        prev_f = avg_fitness if prev_record else 0.0
-        rollout_fitness = self.rollout_fitness
+        prev_f = sum(r.fitness for r in prev_record) / len(prev_record) if prev_record else 0.0
+        rollout_fitness = max(0.0, self.rollout_fitness)
         # rollout_fitness += partner_fitness / 4
         fitness_difference = rollout_fitness - prev_f
         shared_reward = info['episode']['ep_shaped_r'] + info['episode']['ep_sparse_r']
         r_i = max(0.0, fitness_difference)
-        if exploit:
-            record_amount = 1
-        else:
-            record_amount = max(1, int(r_i * self.config.neuro_evolution_multiplier))
+        # r_i =fitness_difference
+        record_amount = max(1, int(r_i * self.config.neuro_evolution_multiplier))
 
         # Get the previous rollout index from the kb and increment it
         prev_record = self.kb.nearest(1)
@@ -180,7 +180,7 @@ class IMGEPAgent(Agent):
                 theta=neuro_policy.theta,
                 fitness=rollout_fitness,
                 intrinsic_reward=r_i,
-                exploit=exploit,
+                exploit=exploit if self.own_episode else False,
                 rollout_idx=rollout_idx,
                 partner_goal_id=partner_goal_id,
                 shared_reward=shared_reward

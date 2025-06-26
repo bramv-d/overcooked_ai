@@ -33,7 +33,7 @@ def select_goal(
         own_kb: KnowledgeBase,
         config: AgentConfig,
         exploit: bool = False,
-) -> Tuple[Goal, bool]:
+) -> Tuple[Goal, bool, bool]:
     """
     Pick a goal either for ourselves or to accommodate the partner,
     based on EMA of intrinsic rewards and recent KB mappings.
@@ -53,7 +53,7 @@ def select_goal(
     if our_turn or not other_top:
         candidates = [gs for gs in own_top if abs(gs.ema - own_max) < EPSILON]
         chosen = random.choice(candidates)
-        return get_goal_by_goal_id(chosen.goal.goal_id, goal_spaces), exploit
+        return get_goal_by_goal_id(chosen.goal.goal_id, goal_spaces), exploit, True
 
     # Otherwise, try to accommodate partner
     partner_gs = random.choice(other_top)
@@ -70,11 +70,11 @@ def select_goal(
         mapped_goal = get_goal_by_goal_id(mapped_id, goal_spaces)
         ours = own_kb.nearest(10, goal=mapped_goal, exploit=True)
         if ours and max(r.fitness for r in ours) > config.minimum_goal_fitness:
-            return mapped_goal, True
+            return mapped_goal, True, False
 
     # Fallback: revert to one of our top
     fallback = random.choice(own_top)
-    return get_goal_by_goal_id(fallback.goal.goal_id, goal_spaces), exploit
+    return get_goal_by_goal_id(fallback.goal.goal_id, goal_spaces), exploit, True
 
 
 def update_goal_space_ema(
