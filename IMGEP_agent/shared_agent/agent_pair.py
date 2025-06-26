@@ -6,6 +6,7 @@ from IMGEP_agent.hyper_parameters import AgentConfig
 from IMGEP_agent.shared_agent.goal_policy import GoalSpaceEMA, select_goal, update_goal_space_ema
 from IMGEP_agent.shared_agent.goal_spaces import Goal, create_goal_spaces, reset_goal_spaces
 from IMGEP_agent.shared_agent.knowledge_base import KnowledgeBase, RolloutRecord
+from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState
 
@@ -40,6 +41,7 @@ class AgentPair:
         reset_goal_spaces(self.goal_spaces)
         self.exploit = random.random() < self.config.exploit_prob
         self.mdp = mdp
+        self.goal_reach_time_step = None
         self.rollout_fitness = 0
         self.t = 0
         self.chosen_goal = select_goal(self.goal_space_ema, goal_spaces=self.goal_spaces, config=self.config)
@@ -49,10 +51,16 @@ class AgentPair:
     def action(self, state: OvercookedState):
         self.t += 1
         joint = []
+        if self.goal_reach_time_step:
+            joint = [Action.STAY for _ in self.agents]
+            return self.return_action(joint, state)
         if self.previous_state:
-            self.rollout_fitness += self.chosen_goal.fitness(state, self.previous_state, self.mdp)
+            if self.chosen_goal.success(state, self.previous_state, self.mdp):
+                self.goal_reach_time_step = self.t
+            self.rollout_fitness += self.chosen_goal.fitness(state, self.previous_state, self.mdp,
+                                                             self.goal_reach_time_step)
         for agent in self.agents:
-            joint.append(agent.action(state))
+            joint.append(agent.action(state, kb=self.kb, goal_spaces=self.goal_spaces))
         return self.return_action(joint, state)
 
     def return_action(self, joint, state):

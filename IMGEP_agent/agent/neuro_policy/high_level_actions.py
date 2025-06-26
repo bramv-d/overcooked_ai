@@ -5,7 +5,7 @@ from overcooked_ai_py.planning.planners import MediumLevelActionManager
 
 
 class HighLevelActions(IntEnum):
-    GO_ONION, GO_DISH, PUT_ONION, GO_READY_POT, GO_SERVE, START_COOKING, GO_COUNTER, WAIT, ONION_FROM_DISPENSER = range(
+    GO_ONION, GO_DISH, PUT_ONION, GO_READY_POT, GO_SERVE, START_COOKING, WAIT, ONION_FROM_DISPENSER, GO_SHARED_COUNTER = range(
         9)
 
 
@@ -30,8 +30,8 @@ def get_motion_goals(mlam: MediumLevelActionManager, mdp: OvercookedGridworld,
             return mlam.deliver_soup_actions()
         case HighLevelActions.START_COOKING:
             return mlam.start_cooking_actions(pots_object)
-        case HighLevelActions.GO_COUNTER:
-            return mlam.place_obj_on_counter_actions(state)
+        case HighLevelActions.GO_SHARED_COUNTER:
+            return mlam._get_ml_actions_for_positions(mdp.find_free_counters_valid_for_both_players(state, mlam))
         case HighLevelActions.WAIT:
             # If the agent is waiting, return an empty list to indicate no motion goals
             return []

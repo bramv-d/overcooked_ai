@@ -14,7 +14,7 @@ def get_policy_input_vector(
         state: OvercookedState,
         mdp: OvercookedGridworld,
         mp: MotionPlanner,
-        player_id: int,
+        player_id: int
 ) -> np.ndarray:
     me: PlayerState = state.players[player_id]
     other: PlayerState = state.players[1 - player_id]

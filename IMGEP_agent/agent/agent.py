@@ -1,4 +1,5 @@
 import random
+from typing import List
 
 from IMGEP_agent.agent.helpers.get_plan import get_plan
 from IMGEP_agent.agent.neuro_policy.high_level_actions import HighLevelActions, get_motion_goals
@@ -42,7 +43,7 @@ class IMGEPAgent(Agent):
         self.goal_space_neuro_policies = GoalSpaceNeuroPolicy(goal=chosen_goal, neuro_policy=neuro_policy,
                                                               exploit=exploit)
 
-    def action(self, state: OvercookedState) -> Action:
+    def action(self, state: OvercookedState, kb: KnowledgeBase, goal_spaces: List[Goal]) -> Action:
         if self.path:
             step = self.path.pop(0)
             return self.return_action(step, state)
@@ -68,4 +69,3 @@ class IMGEPAgent(Agent):
     def return_action(self, action, state):
         self.previous_state = state
         return action
-

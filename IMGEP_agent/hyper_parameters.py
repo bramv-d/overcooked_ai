@@ -1,13 +1,13 @@
 # ROLLOUT PARAMETERS
 HORIZON = 50  # number of steps to run per rollout
-ROLLOUTS = 5000  # number of rollouts to run
+ROLLOUTS = 10000  # number of rollouts to run
 LAYOUT_ID = 22  # layout index to use from the layouts list in overcooked_ai_py
 LOAD_KB = True  # whether to load the knowledge base from a file or not
 
 # ---- INTRINSIC REWARD ---
 IR_BONUS_CAP: float = 0.10
 IR_BONUS_SLOPE: float = 0.05
-GREEDY: bool = True
+GREEDY: bool = False
 # config.py
 from dataclasses import dataclass
 
@@ -15,7 +15,7 @@ from dataclasses import dataclass
 @dataclass
 class AgentConfig:
     # -------- AGENT ----------
-    exploit_prob: float = 0.5
+    exploit_prob: float = 0.3
 
     # ------ NEURO POLICY -----
     neuro_policy_hidden_dim: int = 64
