@@ -5,9 +5,8 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.model_selection import PredefinedSplit, RandomizedSearchCV
 
-from IMGEP_agent.agent.agent import IMGEPAgent
-from IMGEP_agent.agent.knowledge_base import KnowledgeBase
-from IMGEP_agent.hyper_parameters import AgentConfig, HORIZON, LAYOUT_ID, LOAD_KB, ROLLOUTS
+from IMGEP_agent.hyper_parameters import AgentConfig, HORIZON, LAYOUT_ID, ROLLOUTS
+from IMGEP_agent.shared_agent.agent_pair import AgentPair
 from overcooked_ai_py.data.layouts.layouts import layouts
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
@@ -27,7 +26,6 @@ class AgentConfigEstimator(BaseEstimator):
                  mutate_records: int = 64,
                  neuro_evolution_multiplier: int = 10,
                  n_recent: int = 100,
-                 minimum_goal_fitness: float = 0.5,
                  ir_avg_prev_records: int = 10,
                  random_state: int = 42):
         # These will be tuned by sklearn
@@ -38,7 +36,6 @@ class AgentConfigEstimator(BaseEstimator):
         self.mutate_records = mutate_records
         self.neuro_evolution_multiplier = neuro_evolution_multiplier
         self.n_recent = n_recent
-        self.minimum_goal_fitness = minimum_goal_fitness
         self.ir_avg_prev_records = ir_avg_prev_records
         self.random_state = random_state
 
@@ -54,7 +51,6 @@ class AgentConfigEstimator(BaseEstimator):
             mutate_records=self.mutate_records,
             n_recent=self.n_recent,
             neuro_evolution_multiplier=self.neuro_evolution_multiplier,
-            minimum_goal_fitness=self.minimum_goal_fitness,
             ir_avg_prev_records=self.ir_avg_prev_records,
 
         )
@@ -77,50 +73,29 @@ class AgentConfigEstimator(BaseEstimator):
 
         # instantiate agents
         rng = np.random.RandomState(self.random_state)
-        agents = [IMGEPAgent(env, mdp, aid, config=config)
-                  for aid in range(2)]
-
-        # optionally load KB + initial EMA
-        if LOAD_KB:
-            for ag in agents:
-                kb_path = f"agent/kb/b.buffer_rollouts{ag.agent_id}.npz"
-                ag.kb = KnowledgeBase.load_buffer(kb_path, config=config)
-                ag.update_goal_space_emas()
+        agent_pair = AgentPair(env, mdp, config)
 
         # 3) run rollouts & collect a performance measure
         total_fitness = 0.0
         for roll in range(ROLLOUTS):
             env.reset(regen_mdp=True)
-            exploit_flag = rng.rand() < config.exploit_prob
-
-            # reset agents with partner state
-            for ag in agents:
-                partner = agents[1 - ag.agent_id]
-                ag.reset(other_goal_space_emas=partner.goal_space_emas,
-                         other_kb=partner.kb,
-                         mdp=mdp,
-                         exploit=exploit_flag)
-
+            agent_pair.reset(mdp)
             done = False
             state = env.state
-            ep_states = [copy.deepcopy(state)]
 
-            # simulate episode
+            # -------- record trajectory -----------------------------------------
+            ep_states = [copy.deepcopy(state)]  # include start state
             while not done:
-                joint_actions = [ag.action(state) for ag in agents]
-                state, _, done, info = env.step(joint_actions)
-                ep_states.append(copy.deepcopy(state))
+                joint = agent_pair.action(state)
+                state, _, done, info = env.step(joint)
+                ep_states.append(copy.deepcopy(state))  # save each next state
 
-            # finish bookkeeping and tally fitness
-            for idx, ag in enumerate(agents):
-                partner = agents[1 - idx]
-                ag.finish_rollout(info,
-                                  partner.goal_space_neuro_policies[0].goal.goal_id,
-                                  partner.rollout_fitness)
-                total_fitness += agents[idx].rollout_fitness
+            # -------- finish roll-out bookkeeping -------------------------------
+            agent_pair.finish_rollout()
+            total_fitness += agent_pair.rollout_fitness
 
         # average fitness per rollout
-        avg_fitness = total_fitness / (ROLLOUTS * 2)
+        avg_fitness = total_fitness / ROLLOUTS
         self.best_score_ = avg_fitness
 
         return self
@@ -133,15 +108,14 @@ class AgentConfigEstimator(BaseEstimator):
 # === USAGE WITH RANDOMIZEDSEARCHCV ===
 
 param_distributions: Dict[str, Any] = {
-    'exploit_prob': np.linspace(0.0, 1.0, 11),
+    'exploit_prob': np.linspace(0.0, 0.5, 20),
     'neuro_policy_hidden_dim': [50, 100, 125, 150, 200],
-    'adaptive_noise_std': np.linspace(0.0, 0.5, 11),
-    'parent_policy_recent': [10, 50, 100],
+    'adaptive_noise_std': np.linspace(0.05, 0.3, 20),
+    'parent_policy_recent': [40, 50, 60, 70, 80, 90, 100],
     'mutate_records': [5, 10, 20, 40],
     'n_recent': [25, 50, 75, 100],
     'neuro_evolution_multiplier': [2, 5, 10, 15],
     'ir_avg_prev_records': [5, 10, 20, 40],
-    'minimum_goal_fitness': np.linspace(0.4, 1.0, 11),
 }
 ps = PredefinedSplit(test_fold=[0])
 optimizer = RandomizedSearchCV(

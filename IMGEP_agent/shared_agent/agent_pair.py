@@ -76,12 +76,6 @@ class AgentPair:
         record_amount = max(1, int(r_i * self.config.neuro_evolution_multiplier))
         prev_record = self.kb.nearest(1)
         rollout_idx = prev_record[0].rollout_idx + 1 if prev_record else 0
-        if self.rollout_fitness:
-            print(f"Rollout fitness: {self.rollout_fitness}, "
-                  f"Avg prev fitness: {avg_prev_f}, "
-                  f"Intrinsic reward: {r_i}, "
-                  f"Exploit: {self.exploit}, "
-                  f"Rollout idx: {rollout_idx}")
         for _ in range(record_amount):
             self.kb.add_record(RolloutRecord(
                 goal_space_id=self.chosen_goal.goal_id.value,

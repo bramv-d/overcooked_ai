@@ -81,8 +81,7 @@ def start_cooking_space() -> Goal:
     place_onion_on_counter = place_object_space(GoalSpaceEnum.SHARE_ONION, ItemCode.ONION.value, TYPE_TO_CODE[COUNTER])
     onions_placed = 0
 
-    def fitness(state: OvercookedState, previous_state: OvercookedState, mdp: OvercookedGridworld,
-                pick_step: int = None):
+    def fitness(state: OvercookedState, previous_state: OvercookedState, mdp: OvercookedGridworld, pick_step):
         prev_pots = set(mdp.get_cooking_pots(mdp.get_pot_states(previous_state)))
         curr_pots = set(mdp.get_cooking_pots(mdp.get_pot_states(state)))
         new = curr_pots - prev_pots
@@ -125,25 +124,28 @@ def start_cooking_space() -> Goal:
 
 def pickup_soup_space() -> Goal:
     start_cooking = start_cooking_space()
-    def fitness(pick_step: int, state: OvercookedState, previous_state: OvercookedState,
-                agent_id: int, mdp: OvercookedGridworld):
-        player: PlayerState = state.players[agent_id]
-        held = player.get_object() if player.has_object() else None
+
+    def fitness(state: OvercookedState, previous_state: OvercookedState, mdp: OvercookedGridworld, pick_step):
         curr_pots = set(mdp.get_cooking_pots(mdp.get_pot_states(state)))
         if not curr_pots:
-            cooking_fitness = start_cooking.fitness(pick_step, state, previous_state, agent_id, mdp)
+            cooking_fitness = start_cooking.fitness(state, previous_state, mdp, pick_step)
             return cooking_fitness / 2
-        if held and held.name == 'soup':
-            return held.value / 65
+        for agent_id, agent in enumerate(state.players):
+            curr_agent: PlayerState = state.players[agent_id]
+            held = curr_agent.get_object() if curr_agent.has_object() else None
+            if held and held.name == 'soup':
+                return held.value / 65
         return 0.0
 
-    def success(agent_id: int, state: OvercookedState, previous_state: OvercookedState,
+    def success(state: OvercookedState, previous_state: OvercookedState,
                 mdp: OvercookedGridworld):
-        player: PlayerState = state.players[agent_id]
-        held = player.get_object() if player.has_object() else None
-        if held and held.name == 'soup':
-            return True
+        for agent_id, agent in enumerate(state.players):
+            curr_agent: PlayerState = state.players[agent_id]
+            held = curr_agent.get_object() if curr_agent.has_object() else None
+            if held and held.name == 'soup':
+                return True
         return False
+
 
     def reset():
         nonlocal start_cooking
@@ -156,7 +158,7 @@ def create_goal_spaces() -> List[Goal]:
         start_cooking_space(),
         # pickup_soup_space(),
         place_object_space(GoalSpaceEnum.SHARE_ONION, ItemCode.ONION.value, TYPE_TO_CODE[COUNTER]),
-        place_object_space(GoalSpaceEnum.PLACE_IN_POT, ItemCode.ONION.value, TYPE_TO_CODE[POT]),
+        # place_object_space(GoalSpaceEnum.PLACE_IN_POT, ItemCode.ONION.value, TYPE_TO_CODE[POT]),
     ]
 
 def reset_goal_spaces(goal_spaces: List[Goal]):
