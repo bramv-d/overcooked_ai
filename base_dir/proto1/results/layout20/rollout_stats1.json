@@ -1,0 +1,1010 @@
+[
+  {
+    "total_rollouts": 1173,
+    "rollout_index_range": [
+      0,
+      4985
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 1067,
+        "avg_fitness": 0.7991564869880676,
+        "avg_ir": 0.15070945024490356
+      },
+      "START_COOKING": {
+        "count": 10,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "PLACE_IN_POT": {
+        "count": 96,
+        "avg_fitness": 0.8869791626930237,
+        "avg_ir": 0.09255208820104599
+      }
+    }
+  },
+  {
+    "total_rollouts": 972,
+    "rollout_index_range": [
+      4,
+      4996
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 103,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 439,
+        "avg_fitness": 0.2686770558357239,
+        "avg_ir": 0.007674433756619692
+      },
+      "PLACE_IN_POT": {
+        "count": 430,
+        "avg_fitness": 0.9545813202857971,
+        "avg_ir": 0.037709303200244904
+      }
+    }
+  },
+  {
+    "total_rollouts": 1078,
+    "rollout_index_range": [
+      5,
+      4991
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 36,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 1009,
+        "avg_fitness": 0.1183052510023117,
+        "avg_ir": 0.07029762864112854
+      },
+      "PLACE_IN_POT": {
+        "count": 33,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      }
+    }
+  },
+  {
+    "total_rollouts": 1536,
+    "rollout_index_range": [
+      1,
+      4984
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 1307,
+        "avg_fitness": 0.5325248837471008,
+        "avg_ir": 0.3043932616710663
+      },
+      "START_COOKING": {
+        "count": 77,
+        "avg_fitness": 0.098181813955307,
+        "avg_ir": 0.0705304741859436
+      },
+      "PLACE_IN_POT": {
+        "count": 152,
+        "avg_fitness": 0.9576315879821777,
+        "avg_ir": 0.07520394772291183
+      }
+    }
+  },
+  {
+    "total_rollouts": 1277,
+    "rollout_index_range": [
+      3,
+      4996
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 1141,
+        "avg_fitness": 0.6853988170623779,
+        "avg_ir": 0.20576775074005127
+      },
+      "START_COOKING": {
+        "count": 27,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "PLACE_IN_POT": {
+        "count": 109,
+        "avg_fitness": 0.9252294898033142,
+        "avg_ir": 0.08148624002933502
+      }
+    }
+  },
+  {
+    "total_rollouts": 1192,
+    "rollout_index_range": [
+      0,
+      4998
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 428,
+        "avg_fitness": 0.3882710337638855,
+        "avg_ir": 0.2850257158279419
+      },
+      "START_COOKING": {
+        "count": 745,
+        "avg_fitness": 0.12834899127483368,
+        "avg_ir": 0.07192416489124298
+      },
+      "PLACE_IN_POT": {
+        "count": 19,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      }
+    }
+  },
+  {
+    "total_rollouts": 1054,
+    "rollout_index_range": [
+      0,
+      4999
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 355,
+        "avg_fitness": 0.7561972141265869,
+        "avg_ir": 0.1777154803276062
+      },
+      "START_COOKING": {
+        "count": 677,
+        "avg_fitness": 0.2058061808347702,
+        "avg_ir": 0.056180212646722794
+      },
+      "PLACE_IN_POT": {
+        "count": 22,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      }
+    }
+  },
+  {
+    "total_rollouts": 1254,
+    "rollout_index_range": [
+      13,
+      4999
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 739,
+        "avg_fitness": 0.7332882881164551,
+        "avg_ir": 0.1762002557516098
+      },
+      "START_COOKING": {
+        "count": 182,
+        "avg_fitness": 0.0879163146018982,
+        "avg_ir": 0.05951352044939995
+      },
+      "PLACE_IN_POT": {
+        "count": 333,
+        "avg_fitness": 0.856997013092041,
+        "avg_ir": 0.09168168157339096
+      }
+    }
+  },
+  {
+    "total_rollouts": 1151,
+    "rollout_index_range": [
+      4,
+      4997
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 525,
+        "avg_fitness": 0.7275619506835938,
+        "avg_ir": 0.18222475051879883
+      },
+      "START_COOKING": {
+        "count": 485,
+        "avg_fitness": 0.1978144347667694,
+        "avg_ir": 0.04643695428967476
+      },
+      "PLACE_IN_POT": {
+        "count": 141,
+        "avg_fitness": 0.8668086528778076,
+        "avg_ir": 0.12490779906511307
+      }
+    }
+  },
+  {
+    "total_rollouts": 1323,
+    "rollout_index_range": [
+      0,
+      4998
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 1291,
+        "avg_fitness": 0.7612858414649963,
+        "avg_ir": 0.18447868525981903
+      },
+      "START_COOKING": {
+        "count": 18,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "PLACE_IN_POT": {
+        "count": 14,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      }
+    }
+  },
+  {
+    "total_rollouts": 1048,
+    "rollout_index_range": [
+      0,
+      4997
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 67,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 914,
+        "avg_fitness": 0.2094285488128662,
+        "avg_ir": 0.049521882086992264
+      },
+      "PLACE_IN_POT": {
+        "count": 67,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      }
+    }
+  },
+  {
+    "total_rollouts": 1211,
+    "rollout_index_range": [
+      4,
+      4993
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 954,
+        "avg_fitness": 0.6883857846260071,
+        "avg_ir": 0.1390136182308197
+      },
+      "START_COOKING": {
+        "count": 13,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "PLACE_IN_POT": {
+        "count": 244,
+        "avg_fitness": 0.783483624458313,
+        "avg_ir": 0.1689835786819458
+      }
+    }
+  },
+  {
+    "total_rollouts": 1202,
+    "rollout_index_range": [
+      3,
+      4995
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 1100,
+        "avg_fitness": 0.7063819169998169,
+        "avg_ir": 0.16278545558452606
+      },
+      "START_COOKING": {
+        "count": 57,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "PLACE_IN_POT": {
+        "count": 45,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      }
+    }
+  },
+  {
+    "total_rollouts": 1000,
+    "rollout_index_range": [
+      1,
+      4997
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 275,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 358,
+        "avg_fitness": 0.0014954876387491822,
+        "avg_ir": 0.0014954876387491822
+      },
+      "PLACE_IN_POT": {
+        "count": 367,
+        "avg_fitness": 0.659264326095581,
+        "avg_ir": 0.024201635271310806
+      }
+    }
+  },
+  {
+    "total_rollouts": 1145,
+    "rollout_index_range": [
+      0,
+      4998
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 247,
+        "avg_fitness": 0.5384616255760193,
+        "avg_ir": 0.2805141508579254
+      },
+      "START_COOKING": {
+        "count": 452,
+        "avg_fitness": 0.2026599645614624,
+        "avg_ir": 0.05441882461309433
+      },
+      "PLACE_IN_POT": {
+        "count": 446,
+        "avg_fitness": 0.8868608474731445,
+        "avg_ir": 0.08581838011741638
+      }
+    }
+  },
+  {
+    "total_rollouts": 1094,
+    "rollout_index_range": [
+      2,
+      4995
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 336,
+        "avg_fitness": 0.7599405646324158,
+        "avg_ir": 0.1692827343940735
+      },
+      "START_COOKING": {
+        "count": 739,
+        "avg_fitness": 0.14316122233867645,
+        "avg_ir": 0.07152678072452545
+      },
+      "PLACE_IN_POT": {
+        "count": 19,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      }
+    }
+  },
+  {
+    "total_rollouts": 1149,
+    "rollout_index_range": [
+      2,
+      4986
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 1017,
+        "avg_fitness": 0.8275418281555176,
+        "avg_ir": 0.12385643273591995
+      },
+      "START_COOKING": {
+        "count": 25,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "PLACE_IN_POT": {
+        "count": 107,
+        "avg_fitness": 0.9700002074241638,
+        "avg_ir": 0.08158878982067108
+      }
+    }
+  },
+  {
+    "total_rollouts": 1049,
+    "rollout_index_range": [
+      4,
+      4990
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 97,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 563,
+        "avg_fitness": 0.22305506467819214,
+        "avg_ir": 0.014227081090211868
+      },
+      "PLACE_IN_POT": {
+        "count": 389,
+        "avg_fitness": 0.8615424036979675,
+        "avg_ir": 0.055969156324863434
+      }
+    }
+  },
+  {
+    "total_rollouts": 1028,
+    "rollout_index_range": [
+      4,
+      4999
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 73,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 683,
+        "avg_fitness": 0.15959343314170837,
+        "avg_ir": 0.0570298470556736
+      },
+      "PLACE_IN_POT": {
+        "count": 272,
+        "avg_fitness": 0.8714337944984436,
+        "avg_ir": 0.07272058725357056
+      }
+    }
+  },
+  {
+    "total_rollouts": 1049,
+    "rollout_index_range": [
+      9,
+      4997
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 117,
+        "avg_fitness": 0.7576925158500671,
+        "avg_ir": 0.10085469484329224
+      },
+      "START_COOKING": {
+        "count": 560,
+        "avg_fitness": 0.1740109920501709,
+        "avg_ir": 0.05613077059388161
+      },
+      "PLACE_IN_POT": {
+        "count": 372,
+        "avg_fitness": 0.8592204451560974,
+        "avg_ir": 0.11318278312683105
+      }
+    }
+  },
+  {
+    "total_rollouts": 1331,
+    "rollout_index_range": [
+      0,
+      4993
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 1003,
+        "avg_fitness": 0.530199408531189,
+        "avg_ir": 0.22380061447620392
+      },
+      "START_COOKING": {
+        "count": 97,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "PLACE_IN_POT": {
+        "count": 231,
+        "avg_fitness": 0.9456276893615723,
+        "avg_ir": 0.06600865721702576
+      }
+    }
+  },
+  {
+    "total_rollouts": 1098,
+    "rollout_index_range": [
+      2,
+      4991
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 375,
+        "avg_fitness": 0.7933600544929504,
+        "avg_ir": 0.11101865768432617
+      },
+      "START_COOKING": {
+        "count": 528,
+        "avg_fitness": 0.13708332180976868,
+        "avg_ir": 0.07201748341321945
+      },
+      "PLACE_IN_POT": {
+        "count": 195,
+        "avg_fitness": 0.9598973989486694,
+        "avg_ir": 0.0507589690387249
+      }
+    }
+  },
+  {
+    "total_rollouts": 1047,
+    "rollout_index_range": [
+      3,
+      4995
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 87,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 593,
+        "avg_fitness": 0.25859129428863525,
+        "avg_ir": 0.005402517504990101
+      },
+      "PLACE_IN_POT": {
+        "count": 367,
+        "avg_fitness": 0.897193431854248,
+        "avg_ir": 0.044880107045173645
+      }
+    }
+  },
+  {
+    "total_rollouts": 1034,
+    "rollout_index_range": [
+      0,
+      4998
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 47,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 687,
+        "avg_fitness": 0.2119460254907608,
+        "avg_ir": 0.0529724583029747
+      },
+      "PLACE_IN_POT": {
+        "count": 300,
+        "avg_fitness": 0.8978999853134155,
+        "avg_ir": 0.059066664427518845
+      }
+    }
+  },
+  {
+    "total_rollouts": 1068,
+    "rollout_index_range": [
+      1,
+      4998
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 340,
+        "avg_fitness": 0.6505000591278076,
+        "avg_ir": 0.04995587840676308
+      },
+      "START_COOKING": {
+        "count": 393,
+        "avg_fitness": 0.05349579080939293,
+        "avg_ir": 0.03493599593639374
+      },
+      "PLACE_IN_POT": {
+        "count": 335,
+        "avg_fitness": 0.7188358306884766,
+        "avg_ir": 0.05215224251151085
+      }
+    }
+  },
+  {
+    "total_rollouts": 1082,
+    "rollout_index_range": [
+      11,
+      4999
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 375,
+        "avg_fitness": 0.8140268325805664,
+        "avg_ir": 0.09865066409111023
+      },
+      "START_COOKING": {
+        "count": 570,
+        "avg_fitness": 0.21807150542736053,
+        "avg_ir": 0.04605979099869728
+      },
+      "PLACE_IN_POT": {
+        "count": 137,
+        "avg_fitness": 0.8648175597190857,
+        "avg_ir": 0.06490511447191238
+      }
+    }
+  },
+  {
+    "total_rollouts": 1067,
+    "rollout_index_range": [
+      3,
+      4999
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 40,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 980,
+        "avg_fitness": 0.14885400235652924,
+        "avg_ir": 0.07228635251522064
+      },
+      "PLACE_IN_POT": {
+        "count": 47,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      }
+    }
+  },
+  {
+    "total_rollouts": 1066,
+    "rollout_index_range": [
+      1,
+      4995
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 234,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 385,
+        "avg_fitness": 0.24296703934669495,
+        "avg_ir": 0.0048273722641170025
+      },
+      "PLACE_IN_POT": {
+        "count": 447,
+        "avg_fitness": 0.9504920244216919,
+        "avg_ir": 0.03775838389992714
+      }
+    }
+  },
+  {
+    "total_rollouts": 1200,
+    "rollout_index_range": [
+      3,
+      4997
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 1086,
+        "avg_fitness": 0.7757551670074463,
+        "avg_ir": 0.1544567197561264
+      },
+      "START_COOKING": {
+        "count": 25,
+        "avg_fitness": 0.03163076937198639,
+        "avg_ir": 0.02688615396618843
+      },
+      "PLACE_IN_POT": {
+        "count": 89,
+        "avg_fitness": 0.6802246570587158,
+        "avg_ir": 0.17802245914936066
+      }
+    }
+  },
+  {
+    "total_rollouts": 1278,
+    "rollout_index_range": [
+      0,
+      4994
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 1253,
+        "avg_fitness": 0.688946545124054,
+        "avg_ir": 0.18626894056797028
+      },
+      "START_COOKING": {
+        "count": 12,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "PLACE_IN_POT": {
+        "count": 13,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      }
+    }
+  },
+  {
+    "total_rollouts": 1074,
+    "rollout_index_range": [
+      2,
+      4995
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 250,
+        "avg_fitness": 0.39535999298095703,
+        "avg_ir": 0.15551599860191345
+      },
+      "START_COOKING": {
+        "count": 448,
+        "avg_fitness": 0.22188016772270203,
+        "avg_ir": 0.035219091922044754
+      },
+      "PLACE_IN_POT": {
+        "count": 376,
+        "avg_fitness": 0.9174200892448425,
+        "avg_ir": 0.07127924263477325
+      }
+    }
+  },
+  {
+    "total_rollouts": 1108,
+    "rollout_index_range": [
+      12,
+      4994
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 313,
+        "avg_fitness": 0.6161661744117737,
+        "avg_ir": 0.23136740922927856
+      },
+      "START_COOKING": {
+        "count": 691,
+        "avg_fitness": 0.13814204931259155,
+        "avg_ir": 0.06768083572387695
+      },
+      "PLACE_IN_POT": {
+        "count": 104,
+        "avg_fitness": 0.7461539506912231,
+        "avg_ir": 0.09420192241668701
+      }
+    }
+  },
+  {
+    "total_rollouts": 1066,
+    "rollout_index_range": [
+      0,
+      4995
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 258,
+        "avg_fitness": 0.338372141122818,
+        "avg_ir": 0.17031393945217133
+      },
+      "START_COOKING": {
+        "count": 762,
+        "avg_fitness": 0.18571269512176514,
+        "avg_ir": 0.05515425652265549
+      },
+      "PLACE_IN_POT": {
+        "count": 46,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      }
+    }
+  },
+  {
+    "total_rollouts": 1066,
+    "rollout_index_range": [
+      3,
+      4999
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 117,
+        "avg_fitness": 0.6823078989982605,
+        "avg_ir": 0.1301538497209549
+      },
+      "START_COOKING": {
+        "count": 814,
+        "avg_fitness": 0.16721034049987793,
+        "avg_ir": 0.061546869575977325
+      },
+      "PLACE_IN_POT": {
+        "count": 135,
+        "avg_fitness": 0.8478519916534424,
+        "avg_ir": 0.0926888957619667
+      }
+    }
+  },
+  {
+    "total_rollouts": 1294,
+    "rollout_index_range": [
+      3,
+      4999
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 967,
+        "avg_fitness": 0.6941157579421997,
+        "avg_ir": 0.21208271384239197
+      },
+      "START_COOKING": {
+        "count": 190,
+        "avg_fitness": 0.24797572195529938,
+        "avg_ir": 0.016651013866066933
+      },
+      "PLACE_IN_POT": {
+        "count": 137,
+        "avg_fitness": 0.8133576512336731,
+        "avg_ir": 0.148445263504982
+      }
+    }
+  },
+  {
+    "total_rollouts": 990,
+    "rollout_index_range": [
+      4,
+      4994
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 20,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 844,
+        "avg_fitness": 0.1606224924325943,
+        "avg_ir": 0.0544825904071331
+      },
+      "PLACE_IN_POT": {
+        "count": 126,
+        "avg_fitness": 0.7873017191886902,
+        "avg_ir": 0.1288650780916214
+      }
+    }
+  },
+  {
+    "total_rollouts": 1028,
+    "rollout_index_range": [
+      8,
+      4999
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 111,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 729,
+        "avg_fitness": 0.07821673899888992,
+        "avg_ir": 0.015864726155996323
+      },
+      "PLACE_IN_POT": {
+        "count": 188,
+        "avg_fitness": 0.4466490149497986,
+        "avg_ir": 0.04724467918276787
+      }
+    }
+  },
+  {
+    "total_rollouts": 1417,
+    "rollout_index_range": [
+      4,
+      4994
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 1216,
+        "avg_fitness": 0.6192106008529663,
+        "avg_ir": 0.25970393419265747
+      },
+      "START_COOKING": {
+        "count": 196,
+        "avg_fitness": 0.10948587954044342,
+        "avg_ir": 0.06482112407684326
+      },
+      "PLACE_IN_POT": {
+        "count": 5,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      }
+    }
+  },
+  {
+    "total_rollouts": 1029,
+    "rollout_index_range": [
+      0,
+      4999
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 69,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 722,
+        "avg_fitness": 0.2201630175113678,
+        "avg_ir": 0.012467823922634125
+      },
+      "PLACE_IN_POT": {
+        "count": 238,
+        "avg_fitness": 0.9154201745986938,
+        "avg_ir": 0.07245797663927078
+      }
+    }
+  },
+  {
+    "total_rollouts": 1081,
+    "rollout_index_range": [
+      2,
+      4998
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 19,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 961,
+        "avg_fitness": 0.126174658536911,
+        "avg_ir": 0.07272472232580185
+      },
+      "PLACE_IN_POT": {
+        "count": 101,
+        "avg_fitness": 0.8582180738449097,
+        "avg_ir": 0.0881287008523941
+      }
+    }
+  },
+  {
+    "total_rollouts": 1043,
+    "rollout_index_range": [
+      6,
+      4999
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 44,
+        "avg_fitness": 0.0,
+        "avg_ir": 0.0
+      },
+      "START_COOKING": {
+        "count": 772,
+        "avg_fitness": 0.10513950139284134,
+        "avg_ir": 0.06396672129631042
+      },
+      "PLACE_IN_POT": {
+        "count": 227,
+        "avg_fitness": 0.8658150434494019,
+        "avg_ir": 0.04772686958312988
+      }
+    }
+  },
+  {
+    "total_rollouts": 1060,
+    "rollout_index_range": [
+      1,
+      4996
+    ],
+    "goals": {
+      "PLACE_ONION": {
+        "count": 654,
+        "avg_fitness": 0.7403364777565002,
+        "avg_ir": 0.12010855227708817
+      },
+      "START_COOKING": {
+        "count": 242,
+        "avg_fitness": 0.24277177453041077,
+        "avg_ir": 0.006685314234346151
+      },
+      "PLACE_IN_POT": {
+        "count": 164,
+        "avg_fitness": 0.9202439785003662,
+        "avg_ir": 0.054378051310777664
+      }
+    }
+  }
+]
