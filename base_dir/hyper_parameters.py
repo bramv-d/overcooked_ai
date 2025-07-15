@@ -5,7 +5,7 @@ LAYOUT_ID = 22  # layout index to use from the layouts list in overcooked_ai_py
 LOAD_KB = False  # whether to load the knowledge base from a file or not
 
 # ---- INTRINSIC REWARD ---
-IR_BONUS_CAP: float = 0.10
+IR_BONUS_CAP: float = 0.20
 IR_BONUS_SLOPE: float = 0.05
 GREEDY: bool = False
 # config.py

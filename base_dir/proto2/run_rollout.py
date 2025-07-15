@@ -1,8 +1,8 @@
 import copy
+import os
 import random
 
 from base_dir.hyper_parameters import AgentConfig, HORIZON, LAYOUT_ID, LOAD_KB, ROLLOUTS, USE_COUNTERS
-from base_dir.visualise.visualise import make_graphs
 from overcooked_ai_py.data.layouts.layouts import layouts
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
@@ -62,5 +62,23 @@ for roll in range(ROLLOUTS):
     for idx, ag in enumerate(agents):
         ag.finish_rollout(info, agents[1 - idx].goal_space_neuro_policies[0].goal.goal_id)
 
-for ag in agents: ag.kb.save_buffer("../kb/buffer_rollouts" + str(ag.agent_id))
-make_graphs()
+
+def get_next_run_dir(base_dir):
+    os.makedirs(base_dir, exist_ok=True)
+    existing_runs = [
+        int(d) for d in os.listdir(base_dir)
+        if d.isdigit() and os.path.isdir(os.path.join(base_dir, d))
+    ]
+    next_index = max(existing_runs, default=0) + 1
+    new_dir = os.path.join(base_dir, str(next_index))
+    os.makedirs(new_dir)
+    return new_dir
+
+
+# === Usage ===
+
+base_dir = "kb1/buffer_rollouts"
+save_dir = get_next_run_dir(base_dir)
+
+for ag in agents:
+    ag.kb.save_buffer(os.path.join(save_dir, f"buffer_agent{ag.agent_id}"))

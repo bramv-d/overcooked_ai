@@ -1,0 +1,122 @@
+{
+  "layout21": {
+    "0": {
+      "total_records": 42,
+      "goals": {
+        "PLACE_ONION": {
+          "total_count": 26072,
+          "fitness_mean": 0.17353933796680177,
+          "fitness_std": 0.1292951276851174,
+          "ir_mean": 0.06646977354622711,
+          "ir_std": 0.044611574832274535,
+          "no_learning_progress": false
+        },
+        "START_COOKING": {
+          "total_count": 7271,
+          "fitness_mean": 0.055452698694785967,
+          "fitness_std": 0.05338568504510916,
+          "ir_mean": 0.015542556932251457,
+          "ir_std": 0.01444832978537828,
+          "no_learning_progress": false
+        },
+        "PLACE_IN_POT": {
+          "total_count": 12179,
+          "fitness_mean": 0.23699299684570482,
+          "fitness_std": 0.21903046864959816,
+          "ir_mean": 0.03514194267890638,
+          "ir_std": 0.034760524401369106,
+          "no_learning_progress": false
+        }
+      }
+    },
+    "1": {
+      "total_records": 41,
+      "goals": {
+        "PLACE_ONION": {
+          "total_count": 24041,
+          "fitness_mean": 0.29217646374202494,
+          "fitness_std": 0.1396637446299792,
+          "ir_mean": 0.07039101828292875,
+          "ir_std": 0.03269190259033327,
+          "no_learning_progress": false
+        },
+        "START_COOKING": {
+          "total_count": 10507,
+          "fitness_mean": 0.09438278364789922,
+          "fitness_std": 0.04408338341082662,
+          "ir_mean": 0.022319367291723808,
+          "ir_std": 0.013488015839768698,
+          "no_learning_progress": false
+        },
+        "PLACE_IN_POT": {
+          "total_count": 9234,
+          "fitness_mean": 0.36774284747520053,
+          "fitness_std": 0.16948684875019585,
+          "ir_mean": 0.03742634167712999,
+          "ir_std": 0.02767724027666707,
+          "no_learning_progress": false
+        }
+      }
+    }
+  },
+  "layout22": {
+    "0": {
+      "total_records": 39,
+      "goals": {
+        "PLACE_ONION": {
+          "total_count": 25957,
+          "fitness_mean": 0.37999665388503134,
+          "fitness_std": 0.1827767653331041,
+          "ir_mean": 0.0124202812783038,
+          "ir_std": 0.008066822262695745,
+          "no_learning_progress": false
+        },
+        "START_COOKING": {
+          "total_count": 6623,
+          "fitness_mean": 0.0016368206303853255,
+          "fitness_std": 0.005841213597163391,
+          "ir_mean": 0.00047139645530245244,
+          "ir_std": 0.0018301662879606213,
+          "no_learning_progress": false
+        },
+        "PLACE_IN_POT": {
+          "total_count": 6655,
+          "fitness_mean": 0.0019342521301064736,
+          "fitness_std": 0.005086485264506171,
+          "ir_mean": 0.00038793450818420987,
+          "ir_std": 0.0010164516524006448,
+          "no_learning_progress": false
+        }
+      }
+    },
+    "1": {
+      "total_records": 38,
+      "goals": {
+        "PLACE_ONION": {
+          "total_count": 13711,
+          "fitness_mean": 0.06020689447330752,
+          "fitness_std": 0.1083331921795479,
+          "ir_mean": 0.02282263386816914,
+          "ir_std": 0.04170478570176818,
+          "no_learning_progress": false
+        },
+        "START_COOKING": {
+          "total_count": 7589,
+          "fitness_mean": 0.002783493953756988,
+          "fitness_std": 0.008925275543141811,
+          "ir_mean": 0.0010252586676199969,
+          "ir_std": 0.0030971408586737085,
+          "no_learning_progress": false
+        },
+        "PLACE_IN_POT": {
+          "total_count": 19977,
+          "fitness_mean": 0.14996084002287766,
+          "fitness_std": 0.16393963568898665,
+          "ir_mean": 0.046547794175383295,
+          "ir_std": 0.05095144708343744,
+          "no_learning_progress": false
+        }
+      }
+    }
+  }
+}

@@ -3,7 +3,7 @@ from collections import defaultdict
 from typing import Dict, List, Tuple
 
 from base_dir.hyper_parameters import AgentConfig, IR_BONUS_CAP, IR_BONUS_SLOPE
-from base_dir.proto4.knowledge_base import KnowledgeBase
+from base_dir.proto4.knowledge_base import KnowledgeBase, RolloutRecord
 from base_dir.shared_files.goal_spaces import Goal, get_goal_by_goal_id
 
 EPSILON = 1e-6  # numeric tolerance

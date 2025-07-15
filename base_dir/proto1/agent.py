@@ -83,7 +83,7 @@ class IMGEPAgent(Agent):
             else:
                 self.goal_space_neuro_policies.pop()
 
-        if self.t == self.goal_reach_time_step:
+        if self.previous_state:
             self.rollout_fitness += self.goal_space_neuro_policies[0].goal.fitness(
                 # Only add the fitness of the first goal space
                 pick_step=self.goal_reach_time_step,
@@ -144,7 +144,7 @@ class IMGEPAgent(Agent):
         self.previous_state = state
         return action
 
-    def finish_rollout(self, info, partner_goal_id):
+    def finish_rollout(self, info):
         # intrinsic reward = Δ fitness vs nearest prior experiment
         goal = self.goal_space_neuro_policies[0].goal  # The first goal is the main goal space
         neuro_policy = self.goal_space_neuro_policies[0].neuro_policy
@@ -173,6 +173,5 @@ class IMGEPAgent(Agent):
                 intrinsic_reward=r_i,
                 exploit=exploit,
                 rollout_idx=rollout_idx,
-                partner_goal_id=partner_goal_id,
             ))
         self.update_goal_space_emas()

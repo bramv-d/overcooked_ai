@@ -83,7 +83,7 @@ class IMGEPAgent(Agent):
             else:
                 self.goal_space_neuro_policies.pop()
 
-        if self.t == self.goal_reach_time_step:
+        if self.previous_state:
             self.rollout_fitness += self.goal_space_neuro_policies[0].goal.fitness(
                 # Only add the fitness of the first goal space
                 pick_step=self.goal_reach_time_step,

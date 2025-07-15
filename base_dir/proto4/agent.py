@@ -15,6 +15,7 @@ from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState
 from overcooked_ai_py.planning.planners import MotionPlanner
 
+
 class IMGEPAgent(Agent):
     def __init__(
             self,
@@ -43,8 +44,6 @@ class IMGEPAgent(Agent):
         self.path = []
         self.own_episode: bool = False  # Whether the episode is for accommodating this agent or the partner agent
 
-
-
     def update_goal_space_emas(self):
         """
         Update the goal space EMA based on the knowledge base.
@@ -52,7 +51,7 @@ class IMGEPAgent(Agent):
         self.goal_space_emas = update_goal_space_ema(self.kb, self.goal_spaces, self.config)
 
     def reset(self, other_goal_space_emas: list[GoalSpaceEMA], other_kb: KnowledgeBase,
-              mdp: OvercookedGridworld | None = None, exploit: bool = False):
+              mdp: OvercookedGridworld | None = None):
         super().reset()
         self.mdp = mdp
         self.t = 0
@@ -88,8 +87,7 @@ class IMGEPAgent(Agent):
                 self.goal_reach_time_step = self.t
             else:
                 self.goal_space_neuro_policies.pop()
-
-        if self.t == self.goal_reach_time_step:
+        if self.previous_state:
             self.rollout_fitness += self.goal_space_neuro_policies[0].goal.fitness(
                 # Only add the fitness of the first goal space
                 pick_step=self.goal_reach_time_step,
@@ -136,7 +134,6 @@ class IMGEPAgent(Agent):
                 self.rollout_fitness -= 0.01
             motion_goals = get_motion_goals(self.mlam, self.mdp, token, state)
             self.path = get_plan(state.players[self.agent_id].pos_and_or, motion_goals, self.mlam)
-
 
         if not self.path:
             legal_actions = list(Action.MOTION_ACTIONS)
