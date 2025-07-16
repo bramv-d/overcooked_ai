@@ -2,6 +2,8 @@ import copy
 import os
 
 from base_dir.hyper_parameters import AgentConfig, HORIZON, LAYOUT_ID, LOAD_KB, ROLLOUTS, USE_COUNTERS
+from base_dir.visualise.create_gif import create_gif
+from base_dir.visualise.visualise import make_graphs
 from overcooked_ai_py.data.layouts.layouts import layouts
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
@@ -31,7 +33,7 @@ else:
     }
 env: OvercookedEnv = OvercookedEnv.from_mdp(mdp, horizon=HORIZON, info_level=0, mlam_params=base_params)
 
-from base_dir.proto4.agent import IMGEPAgent
+from base_dir.proto5.agent import IMGEPAgent
 
 mp = env.mp
 mlam = env.mlam
@@ -82,5 +84,5 @@ save_dir = get_next_run_dir(base_dir)
 for ag in agents:
     ag.kb.save_buffer(os.path.join(save_dir, f"buffer_agent{ag.agent_id}"))
 
-# create_gif(ep_states, mdp, roll, True, save_dir)
-# make_graphs(save_dir)
+create_gif(ep_states, mdp, roll, True, save_dir)
+make_graphs(save_dir)

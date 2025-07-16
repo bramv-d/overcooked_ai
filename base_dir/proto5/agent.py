@@ -2,9 +2,9 @@ import random
 from typing import List
 
 from base_dir.hyper_parameters import AgentConfig, GREEDY
-from base_dir.proto4.goal_policy import select_goal, update_goal_space_ema
-from base_dir.proto4.knowledge_base import KnowledgeBase, RolloutRecord
-from base_dir.proto4.neuro_policy import GoalSpaceNeuroPolicy, get_neuro_policy
+from base_dir.proto5.goal_policy import select_goal, update_goal_space_ema
+from base_dir.proto5.knowledge_base import KnowledgeBase, RolloutRecord
+from base_dir.proto5.neuro_policy import GoalSpaceNeuroPolicy, get_neuro_policy
 from base_dir.shared_files.goal_spaces import Goal, create_goal_spaces, reset_goal_spaces
 from base_dir.shared_files.helpers.get_plan import get_plan
 from base_dir.shared_files.helpers.goal_policy_input_vector import get_goal_policy_input_vector

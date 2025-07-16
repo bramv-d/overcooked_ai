@@ -5,17 +5,9 @@ from typing import Dict, List, Tuple
 from base_dir.hyper_parameters import AgentConfig, IR_BONUS_CAP, IR_BONUS_SLOPE
 from base_dir.proto4.knowledge_base import KnowledgeBase, RolloutRecord
 from base_dir.shared_files.goal_spaces import Goal, get_goal_by_goal_id
+from base_dir.shared_files.helpers.softmax_sampler import GoalSpaceEMA, _softmax_sample
 
 EPSILON = 1e-6  # numeric tolerance
-
-
-class GoalSpaceEMA:
-    """Holds the EMA of the intrinsic reward for a goal space."""
-
-    def __init__(self, goal: Goal, ema: float):
-        self.goal: Goal = goal
-        self.ema = ema
-
 
 def _top_ema_candidates(gs_emas: List[GoalSpaceEMA], eps: float = EPSILON) -> List[GoalSpaceEMA]:
     """Return all GS-EMA objects whose EMA is within eps of the maximum."""
@@ -23,7 +15,6 @@ def _top_ema_candidates(gs_emas: List[GoalSpaceEMA], eps: float = EPSILON) -> Li
         return []
     m = max(gs.ema for gs in gs_emas)
     return [gs for gs in gs_emas if abs(gs.ema - m) < eps]
-
 
 def select_goal(
         own_goal_space_emas: List[GoalSpaceEMA],
@@ -34,32 +25,34 @@ def select_goal(
         config: AgentConfig,
         exploit: bool = False,
 ) -> Tuple[Goal, bool, bool]:
-    """
-    Pick a goal either for ourselves or to accommodate the partner,
-    based on EMA of intrinsic rewards and recent KB mappings.
-    """
-    own_top = _top_ema_candidates(own_goal_space_emas, EPSILON)
-    other_top = _top_ema_candidates(other_goal_space_emas, EPSILON)
+    # ---------- 0) trivial guards ----------
+    if not own_goal_space_emas:
+        raise ValueError("select_goal() called with empty own_goal_space_emas")
 
-    if not own_top:
-        raise ValueError("select_goal() called with no own_goal_space_emas")
-
-    # Whose motivation is stronger?
-    own_max = own_top[0].ema
-    other_max = other_top[0].ema if other_top else float("-inf")
+    # ---------- 1) how strong is everyone’s motivation? ----------
+    own_max = max(gs.ema for gs in own_goal_space_emas)
+    other_max = max(gs.ema for gs in other_goal_space_emas) if other_goal_space_emas else -math.inf
     our_turn = (own_max + EPSILON) >= other_max
 
-    # If it's our turn (or partner has no goals), pick one of our top EMAs
-    if our_turn or not other_top:
-        candidates = [gs for gs in own_top if abs(gs.ema - own_max) < EPSILON]
-        chosen = random.choice(candidates)
-        return get_goal_by_goal_id(chosen.goal.goal_id, goal_spaces), exploit, True
+    # ---------- 2) OUR TURN --------------------------------------------------
+    if our_turn or not other_goal_space_emas:
+        if exploit:  # *greedy* path
+            # filter near-best goals and pick one uniformly
+            best = [gs for gs in own_goal_space_emas
+                    if abs(gs.ema - own_max) < EPSILON]
+            chosen_gs = random.choice(best)
+        else:  # *exploration* path
+            chosen_gs = _softmax_sample(
+                own_goal_space_emas,
+                tau=getattr(config, "softmax_temperature", 0.3)
+            )
+        return get_goal_by_goal_id(chosen_gs.goal.goal_id, goal_spaces), exploit, True
 
-    # Otherwise, try to accommodate partner
-    partner_gs = random.choice(other_top)
+    # ---------- 3) PARTNER ACCOMMODATION ------------------------------------
+    partner_gs = random.choice(other_goal_space_emas)  # they are already EMA-sorted
     partner_goal = partner_gs.goal
 
-    # Look up their most recent mapped partner-goal
+    # ask KB whether we have a mapping that helps them
     lookups = [
         other_kb.nearest(1, goal=partner_goal, exploit=True),
         other_kb.nearest(1, goal=partner_goal, exploit=False),
@@ -68,12 +61,21 @@ def select_goal(
     if other_recent:
         mapped_id = other_recent[0].partner_goal_id
         mapped_goal = get_goal_by_goal_id(mapped_id, goal_spaces)
+
         ours = own_kb.nearest(10, goal=mapped_goal, exploit=True)
         if ours and max(r.fitness for r in ours) > config.minimum_goal_fitness:
+            # we help partner → always exploit
             return mapped_goal, True, False
 
-    # Fallback: revert to one of our top
-    fallback = random.choice(own_top)
+    # ---------- 4) fallback to our side -------------------------------------
+    # exploit? greedy; explore? soft-max.
+    if exploit:
+        fallback = max(own_goal_space_emas, key=lambda g: g.ema)
+    else:
+        fallback = _softmax_sample(
+            own_goal_space_emas,
+            tau=getattr(config, "softmax_temperature", 0.3)
+        )
     return get_goal_by_goal_id(fallback.goal.goal_id, goal_spaces), exploit, True
 
 

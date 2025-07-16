@@ -5,16 +5,9 @@ from typing import Dict, List, Tuple
 from base_dir.hyper_parameters import AgentConfig, IR_BONUS_CAP, IR_BONUS_SLOPE
 from base_dir.proto3.knowledge_base import KnowledgeBase, RolloutRecord
 from base_dir.shared_files.goal_spaces import Goal, get_goal_by_goal_id
+from base_dir.shared_files.helpers.softmax_sampler import GoalSpaceEMA
 
 EPSILON = 1e-6  # numeric tolerance
-
-
-class GoalSpaceEMA:
-    """Holds the EMA of the intrinsic reward for a goal space."""
-
-    def __init__(self, goal: Goal, ema: float):
-        self.goal: Goal = goal
-        self.ema = ema
 
 
 def _top_ema_candidates(gs_emas: List[GoalSpaceEMA], eps: float = EPSILON) -> List[GoalSpaceEMA]:

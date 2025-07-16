@@ -23,11 +23,11 @@ class AgentConfig:
     parent_policy_recent: int = 100
     mutate_records: int = 20
     neuro_evolution_multiplier: int = 10
-
+    softmax_temperature: float = 0.6
     # ----- GOAL SELECTION ----
-    n_recent: int = 75
+    n_recent: int = 40
 
     # Selectin of sub policies
-    minimum_goal_fitness: float = 0.52
+    minimum_goal_fitness: float = 0.4
 
     ir_avg_prev_records: int = 10

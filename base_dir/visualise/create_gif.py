@@ -5,10 +5,9 @@ import imageio.v2 as imageio  # <- pip install imageio
 from overcooked_ai_py.visualization.state_visualizer import StateVisualizer
 
 
-def create_gif(ep_states, mdp, roll, delete_img):
-    base_dir = Path("visualise/rollouts")
+def create_gif(ep_states, mdp, roll, delete_img, save_dir):
+    base_dir = Path(save_dir)
     base_dir.mkdir(parents=True, exist_ok=True)
-
     # -------- build trajectories dict for the visualizer ----------------
     trajectories = {
         "ep_states": [ep_states],  # list-of-lists
@@ -46,4 +45,4 @@ def create_gif(ep_states, mdp, roll, delete_img):
         print(f"Roll-out {roll + 1:02d}: PNGs not deleted")
         pass
 
-    print(f"Roll-out {roll + 1:02d}: PNGs in {base_dir}, GIF saved to {gif_path}")
+    print(f"Roll-out {roll + 1:02d}: PNGs in {save_dir}, GIF saved to {gif_path}")

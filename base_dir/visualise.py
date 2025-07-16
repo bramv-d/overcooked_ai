@@ -8,8 +8,7 @@ from typing import Dict, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
-
-from base_dir.shared_files.goal_spaces import GoalSpaceEnum
+from IMGEP_agent.agent.goals.goal_spaces import GoalSpaceEnum
 
 
 # ------------------- I/O ----------------------------------------------------
@@ -179,7 +178,7 @@ def plot_goalspace_distribution(data, out_path: str, num_bins: int, colors):
 # ------------------- statistics --------------------------------------------
 
 
-def print_statistics(buffer_path: str, data, ag):
+def print_statistics(buffer_path: str, data):
     mask = data["exploit"]
     if not mask.any():
         print("\n📊 Rollout Statistics: no exploit data.")
@@ -206,52 +205,37 @@ def print_statistics(buffer_path: str, data, ag):
               f"avg fitness = {fit[sel].mean():7.4f}   "
               f"avg IR = {ir[sel].mean():7.4f}")
 
-    total = gid.size
-    counts = Counter(gid)
 
-    # Build new stats entry
-    new_stats = {
-        "total_rollouts": int(total),
-        "rollout_index_range": [int(idx.min()), int(idx.max())],
-        "goals": {}
-    }
-
-    for g in _unique_sorted(gid):
-        sel = gid == g
-        goal_name = GoalSpaceEnum.get_goal_space_name(g)
-        new_stats["goals"][goal_name] = {
-            "count": int(counts[g]),
-            "avg_fitness": float(np.mean(fit[sel])),
-            "avg_ir": float(np.mean(ir[sel]))
-        }
+# ------------------- main ---------------------------------------------------
 
 
-# ------------------- main --------------------------------------------------
-
-
-def make_graphs(path):
+def make_graphs():
     os.makedirs("visualise/stats", exist_ok=True)
 
     for ag in range(2):
+        path = f"agent/kb/buffer_rollouts{ag}.npz"
         if not os.path.exists(path):
             print(f"❌ {path} not found — skipping.")
             continue
 
         print(f"✅ Loading {path}")
-        agent_path = f"{path}/buffer_agent{ag}.npz"
-        data = load_buffer(agent_path)
+        data = load_buffer(path)
 
         goal_names = _goal_name_array(data["goal_id"])
         colors = get_goal_space_colors(goal_names)
 
         plot_fitness(data,
-                     f"{path}/fitness_plot_{ag}.png",
-                     smooth_k=5,
+                     f"visualise/stats/fitness_plot_{ag}.png",
+                     smooth_k=1,
                      colors=colors)
 
         plot_goalspace_distribution(data,
-                                    f"{path}/goalspace_dist_{ag}.png",
-                                    num_bins=5,
+                                    f"visualise/stats/goalspace_dist_{ag}.png",
+                                    num_bins=1,
                                     colors=colors)
 
-        # print_statistics(path, data, ag)
+        print_statistics(path, data)
+
+
+if __name__ == "__main__":
+    make_graphs()
