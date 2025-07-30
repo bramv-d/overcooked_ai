@@ -41,13 +41,13 @@ if LOAD_KB:
     for ag in agents:
         kb_path = f"kb/buffer_rollouts{ag.agent_id}.npz"
         ag.kb = ag.kb.load_buffer(kb_path, config=config)
-        ag.update_goal_space_emas()
+        ag.update_goal_space_swms()
 # ---------------------------------------------------------------- run one roll-out
 
 for roll in range(ROLLOUTS):
     print(roll)
     env.reset(regen_mdp=True)
-    for ag in agents: ag.reset(other_goal_space_emas=agents[1 - ag.agent_id].goal_space_emas,
+    for ag in agents: ag.reset(other_goal_space_swms=agents[1 - ag.agent_id].goal_space_swms,
                                other_kb=agents[1 - ag.agent_id].kb, mdp=mdp)
     done = False
     state = env.state

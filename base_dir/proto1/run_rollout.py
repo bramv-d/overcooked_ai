@@ -3,6 +3,7 @@ import os
 import random
 
 from base_dir.hyper_parameters import AgentConfig, HORIZON, LAYOUT_ID, LOAD_KB, ROLLOUTS, USE_COUNTERS
+from base_dir.visualise.create_gif import create_gif
 from overcooked_ai_py.data.layouts.layouts import layouts
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
@@ -41,7 +42,7 @@ if LOAD_KB:
     for ag in agents:
         kb_path = f"../kb/buffer_rollouts{ag.agent_id}.npz"
         ag.kb = ag.kb.load_buffer(kb_path, config=config)
-        ag.update_goal_space_emas()
+        ag.update_goal_space_swms()
 # ---------------------------------------------------------------- run one roll-out
 for roll in range(ROLLOUTS):
     print(roll)
@@ -61,6 +62,9 @@ for roll in range(ROLLOUTS):
     for idx, ag in enumerate(agents):
         ag.finish_rollout(info)
 
+    if roll == ROLLOUTS - 1:
+        create_gif(ep_states, mdp, roll, False, 'save_dir')
+
 
 def get_next_run_dir(base_dir):
     os.makedirs(base_dir, exist_ok=True)
@@ -76,7 +80,7 @@ def get_next_run_dir(base_dir):
 
 # === Usage ===
 
-base_dir = "kb1/buffer_rollouts"
+base_dir = f"layout{LAYOUT_ID}/buffer_rollouts"
 save_dir = get_next_run_dir(base_dir)
 
 for ag in agents:

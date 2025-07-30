@@ -35,7 +35,6 @@ def get_goal_policy_input_vector(
     d_full_not_cooking_pots = is_reachable(mp, me.pos_and_or, mdp.get_full_but_not_cooking_pots(pot_states))
     d_empty_pots = is_reachable(mp, me.pos_and_or, mdp.get_empty_pots(pot_states))
     d_partly_full_pots = is_reachable(mp, me.pos_and_or, mdp.get_partially_full_pots(pot_states))
-    d_dish_pickup_useful = mdp.is_dish_pickup_useful(state, pot_states)
     d_ready_pots = is_reachable(mp, me.pos_and_or, mdp.get_ready_pots(pot_states))
 
     # Assemble feature vector
@@ -46,7 +45,6 @@ def get_goal_policy_input_vector(
         d_dish_counter,
         d_onion,
         d_partly_full_pots,
-        d_dish_pickup_useful,
         d_pots_cooking,
         d_empty_pots,
         d_full_not_cooking_pots,
@@ -56,4 +54,4 @@ def get_goal_policy_input_vector(
     return feat
 
 
-GOAL_POLICY_INPUT_VECTOR_SIZE = len(ItemCode) + 10
+GOAL_POLICY_INPUT_VECTOR_SIZE = len(ItemCode) + 9

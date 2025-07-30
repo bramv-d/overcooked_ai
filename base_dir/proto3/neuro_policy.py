@@ -6,7 +6,7 @@ import numpy as np
 
 from base_dir.hyper_parameters import AgentConfig
 from base_dir.proto3.knowledge_base import KnowledgeBase
-from base_dir.shared_files.goal_spaces import Goal
+from base_dir.shared_files.goal_spaces import GoalSpace
 from base_dir.shared_files.helpers.goal_policy_input_vector import GOAL_POLICY_INPUT_VECTOR_SIZE
 from base_dir.shared_files.helpers.high_level_actions import HighLevelActions
 
@@ -18,7 +18,7 @@ def he_init(fan_in: int, fan_out: int) -> np.ndarray:
 
 
 class NeuroPolicy:
-    def __init__(self, goal_spaces: List[Goal], config: AgentConfig, theta: np.ndarray | None = None):
+    def __init__(self, goal_spaces: List[GoalSpace], config: AgentConfig, theta: np.ndarray | None = None):
 
         self.inp_dim = GOAL_POLICY_INPUT_VECTOR_SIZE
         self.hidden_dim = config.neuro_policy_hidden_dim
@@ -75,13 +75,13 @@ class GoalSpaceNeuroPolicy:
     A NeuroPolicy that is specialized for a specific goal space.
     """
 
-    def __init__(self, goal: Goal, neuro_policy: NeuroPolicy, exploit: bool):
+    def __init__(self, goal: GoalSpace, neuro_policy: NeuroPolicy, exploit: bool):
         self.goal = goal
         self.neuro_policy = neuro_policy
         self.exploit = exploit
 
 
-def get_neuro_policy(selected_goal: Goal, kb: KnowledgeBase, goal_spaces: List[Goal], exploit: bool,
+def get_neuro_policy(selected_goal: GoalSpace, kb: KnowledgeBase, goal_spaces: List[GoalSpace], exploit: bool,
                      config: AgentConfig) -> NeuroPolicy:
     if not kb.nearest(goal=selected_goal, k=1):
         return NeuroPolicy(goal_spaces, config)  # no records for this goal, return a fresh policy

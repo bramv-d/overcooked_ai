@@ -1,55 +1,57 @@
+import math
 import random
 from collections import defaultdict
 from typing import Dict, List, Tuple
 
 from base_dir.hyper_parameters import AgentConfig, IR_BONUS_CAP, IR_BONUS_SLOPE
 from base_dir.proto4.knowledge_base import KnowledgeBase, RolloutRecord
-from base_dir.shared_files.goal_spaces import Goal, get_goal_by_goal_id
-from base_dir.shared_files.helpers.softmax_sampler import GoalSpaceEMA, _softmax_sample
+from base_dir.shared_files.goal_spaces import GoalSpace, get_goal_by_goal_id
+from base_dir.shared_files.helpers.softmax_sampler import GoalSpaceSWM, _softmax_sample
 
 EPSILON = 1e-6  # numeric tolerance
 
-def _top_ema_candidates(gs_emas: List[GoalSpaceEMA], eps: float = EPSILON) -> List[GoalSpaceEMA]:
+
+def _top_swm_candidates(gs_swms: List[GoalSpaceSWM], eps: float = EPSILON) -> List[GoalSpaceSWM]:
     """Return all GS-EMA objects whose EMA is within eps of the maximum."""
-    if not gs_emas:
+    if not gs_swms:
         return []
-    m = max(gs.ema for gs in gs_emas)
-    return [gs for gs in gs_emas if abs(gs.ema - m) < eps]
+    m = max(gs.swm for gs in gs_swms)
+    return [gs for gs in gs_swms if abs(gs.swm - m) < eps]
 
 def select_goal(
-        own_goal_space_emas: List[GoalSpaceEMA],
-        other_goal_space_emas: List[GoalSpaceEMA],
+        own_goal_space_swms: List[GoalSpaceSWM],
+        other_goal_space_swms: List[GoalSpaceSWM],
         other_kb: KnowledgeBase,
-        goal_spaces: List[Goal],
+        goal_spaces: List[GoalSpace],
         own_kb: KnowledgeBase,
         config: AgentConfig,
         exploit: bool = False,
-) -> Tuple[Goal, bool, bool]:
+) -> Tuple[GoalSpace, bool, bool]:
     # ---------- 0) trivial guards ----------
-    if not own_goal_space_emas:
+    if not own_goal_space_swms:
         raise ValueError("select_goal() called with empty own_goal_space_emas")
 
     # ---------- 1) how strong is everyone’s motivation? ----------
-    own_max = max(gs.ema for gs in own_goal_space_emas)
-    other_max = max(gs.ema for gs in other_goal_space_emas) if other_goal_space_emas else -math.inf
+    own_max = max(gs.swm for gs in own_goal_space_swms)
+    other_max = max(gs.swm for gs in other_goal_space_swms) if other_goal_space_swms else -math.inf
     our_turn = (own_max + EPSILON) >= other_max
 
     # ---------- 2) OUR TURN --------------------------------------------------
-    if our_turn or not other_goal_space_emas:
+    if our_turn or not other_goal_space_swms:
         if exploit:  # *greedy* path
             # filter near-best goals and pick one uniformly
-            best = [gs for gs in own_goal_space_emas
-                    if abs(gs.ema - own_max) < EPSILON]
+            best = [gs for gs in own_goal_space_swms
+                    if abs(gs.swm - own_max) < EPSILON]
             chosen_gs = random.choice(best)
         else:  # *exploration* path
             chosen_gs = _softmax_sample(
-                own_goal_space_emas,
+                own_goal_space_swms,
                 tau=getattr(config, "softmax_temperature", 0.3)
             )
         return get_goal_by_goal_id(chosen_gs.goal.goal_id, goal_spaces), exploit, True
 
     # ---------- 3) PARTNER ACCOMMODATION ------------------------------------
-    partner_gs = random.choice(other_goal_space_emas)  # they are already EMA-sorted
+    partner_gs = random.choice(other_goal_space_swms)  # they are already EMA-sorted
     partner_goal = partner_gs.goal
 
     # ask KB whether we have a mapping that helps them
@@ -70,20 +72,20 @@ def select_goal(
     # ---------- 4) fallback to our side -------------------------------------
     # exploit? greedy; explore? soft-max.
     if exploit:
-        fallback = max(own_goal_space_emas, key=lambda g: g.ema)
+        fallback = max(own_goal_space_swms, key=lambda g: g.swm)
     else:
         fallback = _softmax_sample(
-            own_goal_space_emas,
+            own_goal_space_swms,
             tau=getattr(config, "softmax_temperature", 0.3)
         )
     return get_goal_by_goal_id(fallback.goal.goal_id, goal_spaces), exploit, True
 
 
-def update_goal_space_ema(
+def update_goal_space_swm(
         kb: KnowledgeBase,
-        goal_spaces: List[Goal],
+        goal_spaces: List[GoalSpace],
         config: AgentConfig,
-) -> List[GoalSpaceEMA]:
+) -> List[GoalSpaceSWM]:
     """
     Compute an (approximate) EMA of intrinsic reward per goal space,
     adding a small bonus for sparsely tried goals so they remain eligible.
@@ -98,7 +100,7 @@ def update_goal_space_ema(
 
     # 3) compute a per-goal EMA + bonus
     bonus_cutoff = int(IR_BONUS_CAP / IR_BONUS_SLOPE)
-    out: List[GoalSpaceEMA] = []
+    out: List[GoalSpaceSWM] = []
     for g in goal_spaces:
         recs = by_goal.get(g.goal_id, [])
         n = len(recs)
@@ -109,6 +111,6 @@ def update_goal_space_ema(
             bonus = IR_BONUS_CAP - IR_BONUS_SLOPE * n
             avg_ir += bonus
 
-        out.append(GoalSpaceEMA(g, avg_ir))
+        out.append(GoalSpaceSWM(g, avg_ir))
 
     return out

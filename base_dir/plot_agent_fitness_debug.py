@@ -13,7 +13,7 @@ from base_dir.shared_files.goal_spaces import GoalSpaceEnum
 
 # ----------- CONFIG --------------------------------------------------------
 
-PROTOTYPES = ["proto5"]
+PROTOTYPES = ["proto1", "proto2", "proto3", "proto4"]
 LAYOUTS = ["layout20", "layout22"]
 AGENT_IDS = [0, 1]
 NUM_FILES = 50

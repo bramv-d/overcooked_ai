@@ -1,6 +1,6 @@
 # ROLLOUT PARAMETERS
 HORIZON = 50  # number of steps to run per rollout
-ROLLOUTS = 5000  # number of rollouts to run
+ROLLOUTS = 1  # number of rollouts to run
 LAYOUT_ID = 22  # layout index to use from the layouts list in overcooked_ai_py
 LOAD_KB = False  # whether to load the knowledge base from a file or not
 
@@ -23,7 +23,6 @@ class AgentConfig:
     parent_policy_recent: int = 100
     mutate_records: int = 20
     neuro_evolution_multiplier: int = 10
-    softmax_temperature: float = 0.6
     # ----- GOAL SELECTION ----
     n_recent: int = 40
 

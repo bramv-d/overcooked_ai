@@ -2,10 +2,10 @@ import random
 from typing import List
 
 from base_dir.hyper_parameters import AgentConfig, GREEDY
-from base_dir.proto2.goal_policy import GoalSpaceEMA, select_goal, update_goal_space_ema
+from base_dir.proto2.goal_policy import GoalSpaceSWM, select_goal, update_goal_space_swm
 from base_dir.proto2.knowledge_base import KnowledgeBase, RolloutRecord
 from base_dir.proto2.neuro_policy import GoalSpaceNeuroPolicy, get_neuro_policy
-from base_dir.shared_files.goal_spaces import Goal, create_goal_spaces, reset_goal_spaces
+from base_dir.shared_files.goal_spaces import GoalSpace, create_goal_spaces, reset_goal_spaces
 from base_dir.shared_files.helpers.get_plan import get_plan
 from base_dir.shared_files.helpers.goal_policy_input_vector import get_goal_policy_input_vector
 from base_dir.shared_files.helpers.high_level_actions import HighLevelActions, get_motion_goals
@@ -30,11 +30,11 @@ class IMGEPAgent(Agent):
         self.mp: MotionPlanner = env.mp
         self.mlam = env.mlam
 
-        self.goal_spaces: List[Goal] = create_goal_spaces()
+        self.goal_spaces: List[GoalSpace] = create_goal_spaces()
         self.kb = KnowledgeBase(len(self.goal_spaces), config=config)
-        self.goal_space_emas: List[GoalSpaceEMA] = []
+        self.goal_space_swms: List[GoalSpaceSWM] = []
         self.config = config
-        self.update_goal_space_emas()
+        self.update_goal_space_swms()
         # Rollout bookkeeping
         self.previous_state = None
         self.goal_space_neuro_policies: List[GoalSpaceNeuroPolicy] = []
@@ -43,11 +43,11 @@ class IMGEPAgent(Agent):
         self.rollout_fitness = 0.0
         self.path = []
 
-    def update_goal_space_emas(self):
+    def update_goal_space_swms(self):
         """
         Update the goal space EMA based on the knowledge base.
         """
-        self.goal_space_emas = update_goal_space_ema(self.kb, self.goal_spaces, self.config)
+        self.goal_space_swms = update_goal_space_swm(self.kb, self.goal_spaces, self.config)
 
     def reset(self, mdp: OvercookedGridworld | None = None, exploit: bool = False):
         super().reset()
@@ -59,7 +59,7 @@ class IMGEPAgent(Agent):
         self.previous_state = None
         reset_goal_spaces(self.goal_spaces)
         exploit = random.random() < self.config.exploit_prob
-        chosen_goal, exploit = select_goal(self.goal_space_emas, goal_spaces=self.goal_spaces,
+        chosen_goal, exploit = select_goal(self.goal_space_swms, goal_spaces=self.goal_spaces,
                                            exploit=exploit)
 
         neuro_policy = get_neuro_policy(selected_goal=chosen_goal, kb=self.kb, exploit=exploit,
@@ -179,4 +179,4 @@ class IMGEPAgent(Agent):
                 rollout_idx=rollout_idx,
                 partner_goal_id=partner_goal_id,
             ))
-        self.update_goal_space_emas()
+        self.update_goal_space_swms()

@@ -42,7 +42,7 @@ if LOAD_KB:
     for ag in agents:
         kb_path = f"../kb/buffer_rollouts{ag.agent_id}.npz"
         ag.kb = ag.kb.load_buffer(kb_path, config=config)
-        ag.update_goal_space_emas()
+        ag.update_goal_space_swms()
 # ---------------------------------------------------------------- run one roll-out
 for roll in range(ROLLOUTS):
     print(roll)
@@ -77,7 +77,7 @@ def get_next_run_dir(base_dir):
 
 # === Usage ===
 
-base_dir = "kb1/buffer_rollouts"
+base_dir = f"layout{LAYOUT_ID}/buffer_rollouts"
 save_dir = get_next_run_dir(base_dir)
 
 for ag in agents:

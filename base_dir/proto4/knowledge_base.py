@@ -5,7 +5,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from base_dir.hyper_parameters import AgentConfig
-from base_dir.shared_files.goal_spaces import Goal
+from base_dir.shared_files.goal_spaces import GoalSpace
 from base_dir.shared_files.helpers.goal_policy_input_vector import GOAL_POLICY_INPUT_VECTOR_SIZE
 from base_dir.shared_files.helpers.high_level_actions import HighLevelActions
 
@@ -87,7 +87,7 @@ class KnowledgeBase:
             self,
             k: int,
             exploit: Optional[bool] = None,
-            goal: Optional[Goal] = None,
+            goal: Optional[GoalSpace] = None,
     ) -> List[RolloutRecord]:
         """
         Return the **k most-recent** records matching the (optional) filters.
