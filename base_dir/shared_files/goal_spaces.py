@@ -36,7 +36,7 @@ def pick_object_space(goal_id: GoalSpaceEnum, object_code: int) -> GoalSpace:
                 agent_id: int, mdp: OvercookedGridworld):
         if pick_step is None:
             return 0.0
-        return 1.0
+        return 1.0 - pick_step
 
     def success(agent_id: int, state: OvercookedState, previous_state: OvercookedState,
                 mdp: OvercookedGridworld):
@@ -55,7 +55,7 @@ def place_object_space(goal_id: GoalSpaceEnum, object_code: int, terrain_type: i
                 agent_id: int, mdp: OvercookedGridworld):
         if pick_step is None:
             return 0.0
-        return 1.0
+        return 1.0 - pick_step
 
     def success(agent_id: int, state: OvercookedState, previous_state: OvercookedState,
                 mdp: OvercookedGridworld):

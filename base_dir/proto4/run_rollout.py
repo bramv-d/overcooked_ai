@@ -2,6 +2,7 @@ import copy
 import os
 
 from base_dir.hyper_parameters import AgentConfig, HORIZON, LAYOUT_ID, LOAD_KB, ROLLOUTS, USE_COUNTERS
+from base_dir.visualise.create_gif import create_gif
 from overcooked_ai_py.data.layouts.layouts import layouts
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
@@ -61,6 +62,11 @@ for roll in range(ROLLOUTS):
     # -------- finish roll-out bookkeeping -------------------------------
     for idx, ag in enumerate(agents):
         ag.finish_rollout(info, agents[1 - idx].goal_space_neuro_policies[0].goal.goal_id)
+
+    if roll == ROLLOUTS - 1:
+        print("Last roll-out, saving buffers...")
+        create_gif(ep_states, mdp, roll, False, f"layout{LAYOUT_ID}/buffer_rollouts/rollout_{roll}")
+
 
 
 def get_next_run_dir(base_dir):

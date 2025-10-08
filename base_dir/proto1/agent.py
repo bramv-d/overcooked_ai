@@ -135,7 +135,7 @@ class IMGEPAgent(Agent):
             legal_actions = list(Action.MOTION_ACTIONS)
             # Pick a random action from the legal actions
             random_action = random.choice(legal_actions)
-            return self.retn_action(random_action, state)
+            return self.return_action(random_action, state)
 
         action = self.path.pop(0)
         return self.return_action(action, state)
