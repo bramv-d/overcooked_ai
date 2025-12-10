@@ -23,62 +23,84 @@ to better understand agent behaviour. During experimentation, this proved especi
 and understanding what the agents were doing wrong. An example implementation can be found in
 base_dir/proto1/run_rollout.py (around line 65), where the trajectory of one of the final agents is rendered
 step-by-step and saved both as individual images and as an animated GIF.
+EXPERIMENTAL WORKFLOW
 
-**Running the Experiments**
+1. Configure hyperparameters
 
-# ------------------------------------------------------------
-# 1. Configure hyperparameters
-# ------------------------------------------------------------
-# In base_dir/hyper_parameters.py
+----------------------------
+Edit:
+base_dir/hyper_parameters.py
 
-#
-# For layout 20:
+Required layout settings:
 
-# LAYOUT_ID = 20
+Layout 20:
+LAYOUT_ID = 20
+USE_COUNTERS = False
 
-# USE_COUNTERS = False
-#
-# For layout 22:
+Layout 22:
+LAYOUT_ID = 22
+USE_COUNTERS = True
 
-# LAYOUT_ID = 22
+IMPORTANT:
+Any other configuration will produce invalid results.
+There are many additional hyperparameters available—see the file for details.
 
-# USE_COUNTERS = True
-#
+2. Run batch experiments
 
-# IMPORTANT:
-
-# Any other configuration will produce invalid results.
-
-# There are many additional parameters to tune—see the file
-
-# for detailed explanations.
-
-# ------------------------------------------------------------
-# 2. Run batch experiments
-# ------------------------------------------------------------
-
-# Run 50 batches of 5000 rollouts (horizon = 50) per agent.
-
-# Repeat once for each layout (20 & 22).
+-----------------------
+Run batch_runner.py for each prototype (repeat once per layout):
 
 python base_dir/proto1/batch_runner.py
 python base_dir/proto2/batch_runner.py
 python base_dir/proto3/batch_runner.py
 python base_dir/proto4/batch_runner.py
 
-# ------------------------------------------------------------
-# 3. Stored rollout buffers (example)
-# ------------------------------------------------------------
-# Each run saves buffers per agent, e.g.:
-# base_dir/proto1/layout20/buffer_rollouts/1/buffer_agent0.npz
-# base_dir/proto1/layout20/buffer_rollouts/1/buffer_agent1.npz
+Experiment setup:
 
-# ------------------------------------------------------------
-# 4. Generate visualisations
-# ------------------------------------------------------------
+- 50 batches
+- 5,000 rollouts per batch
+- Horizon: 50
+- 2 agents per run
 
-# This creates plots for all prototypes, both layouts,
+All prototypes can be executed in parallel if compute allows.
 
-# and both agents. Outputs are saved to base_dir/stats/.
+3. Rollout buffer output
+
+-----------------------
+Each run saves rollout buffers per agent, for example:
+
+base_dir/proto1/layout20/buffer_rollouts/1/buffer_agent0.npz
+base_dir/proto1/layout20/buffer_rollouts/1/buffer_agent1.npz
+
+These buffers contain the complete experimental output and are required
+for all downstream analysis and visualisation.
+
+4. Generate visualisations
+
+-------------------------
+After all batch runs are complete, generate visualisations using:
 
 python base_dir/plot_agent_fitness_debug.py
+
+This creates plots for:
+
+- All prototypes
+- Both layouts (20 and 22)
+- Both agents
+
+All figures are saved to:
+base_dir/stats/
+
+5. Optional: trajectory-level visualisation
+
+-------------------------------------------
+For detailed debugging, trajectory-level renderings can be generated.
+This was especially useful for understanding failure modes.
+
+Example implementation:
+base_dir/proto1/run_rollout.py  (around line 65)
+
+This code renders the trajectory of one of the final agents and saves:
+
+- Individual images per timestep
+- An animated GIF of the full trajectory
